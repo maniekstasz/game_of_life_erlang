@@ -1,5 +1,15 @@
 -module(lifeio).
--export([prepareBoardToWrite/2,lifeRead/1,readData/2,lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToBoard/1]).
+-export([prepareBoardToWrite/2,lifeRead/1,readData/2,lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToBoard/1,writeBoard/3]).
+
+
+%% Funkcja do wypisywania tablicy na ekran
+writeBoard(_,_,0) -> ok;
+writeBoard(Board, Width, Height) ->
+	<<A:Width, Rest/bits>> = Board,
+	Data = [B + 48 || <<B:1>> <= <<A:Width>>],
+	io:fwrite("~s~n", [Data]),
+	writeBoard(Rest,Width, Height-1).
+
 
 %% otwarcie pliku do wczytywania
 %% zwracany jest deskryptor pliku i rozmiar danych/planszy
@@ -20,7 +30,6 @@ readData(FD,Length) ->
 		end.
 %% Wczytuje tablicę z pliku
 %% Zwraca rozmiar oraz tablice
-
 readDataToBoard(FileName) ->
 	{FD,Pow} = lifeRead(FileName),
 	BoardSize = trunc(math:pow(2, Pow)),
