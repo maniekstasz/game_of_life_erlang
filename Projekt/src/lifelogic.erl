@@ -4,7 +4,9 @@
 
 -module(lifelogic).
 
--export([test/0,createConstants/2,getBoardExtraTopAndBottom/2, getInnerBoard/3, next/3, split/3, getBorders/5, glue/3, setBorders/4]).
+-compile(export_all).
+
+%-export([test/0,createConstants/2,getBoardExtraTopAndBottom/2, getInnerBoard/3, next/3, split/3, getBorders/5, glue/3, setBorders/4]).
 
 %%    ---------------- WAŻNE -----------------
 %% Width, Height - rozmiary tablicy niepowiekszonej
@@ -16,27 +18,23 @@
 %% Przykładowe użycie funkcji które napisałem. Ta funkcja jest do skasowania.
 %% Jest ona głupio napisana, powinno tytaj wszystko być na listach, ale tak lepiej widać jak działają funkcje.
 test() ->
-	{BoardSize, PreBoard} = lifeio:readDataToBoard('c:/erlang/a.txt'),
+	{ok,Dir} = file:get_cwd(),
+	{BoardSize, PreBoard} = lifeio:readDataToBoard(Dir ++ '/fff.gz'),
 	Board = getBoardExtraTopAndBottom(PreBoard, BoardSize),
 	ColumnCount = 4,
 	ColumnWidth = BoardSize div ColumnCount,
 	{InnerBoard, Left, Right, Zero} = createConstants(ColumnWidth, BoardSize),
 	Columns= split(ColumnCount, BoardSize, Board),
-	
-	[A,S,D,F] = Columns,
 	ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
-	[{AL,AR},{SL,SR},{DL,DR},{FL,FR}] = lists:map(fun(Elem) -> getBorders(Elem, Left, Right, ColumnWidth, ColumnSize) end, Columns),
+	Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
+	BorderTuples = lifemain:prepareColumnData(Borders, Zero),
 	
-	A2 = setBorders(A, InnerBoard, ColumnSize, {Zero, SL}),
-	S2 = setBorders(S, InnerBoard, ColumnSize, {AR, DL}),
-	D2 = setBorders(D, InnerBoard, ColumnSize, {SR, FL}),
-	F2 = setBorders(F, InnerBoard, ColumnSize, {DR, Zero}),
-	Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, [A2,S2,D2,F2]),
+	ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
+	
+	Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
 	Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
 	Glued = glue(Inners, ColumnWidth, BoardSize),
 	lifeio:writeBoard(Glued, BoardSize,BoardSize).
-
-
 
 %% Tworze bitboardy potrzebne do obliczania i ustawiania granic. 
 %% Należy je obliczyć raz dla każdego podziału i przechowywać je pomiędzy iteracjami
@@ -72,11 +70,11 @@ getRightAsLeft(Board, RightConstant, Width) ->
 %% Co ważne fukcja zwaraca Integery nie bitstringi
 getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
 	<<BoardAsInteger:BigSize>> = Board,
-	{getLeftAsRight(BoardAsInteger, LeftConstant, Width), getRightAsLeft(BoardAsInteger, RightConstant, Width)}.
+	{getLeftAsRight(BoardAsInteger, LeftConstant, Width), Board, getRightAsLeft(BoardAsInteger, RightConstant, Width)}.
 
 %% Ustawia krawędzie, LeftBorder to krawędź którą mamy przypisać po lewej stronie wiec bedzie to RightAsLeft,
 %% RightBorder analogicznie
-setBorders(Board, InnerConstant, BigSize, {LeftBorder, RightBorder}) ->
+setBorders(InnerConstant, BigSize, {LeftBorder, Board, RightBorder}) ->
 	<<BoardAsInteger:BigSize>> = Board,
 	Result = BoardAsInteger band InnerConstant bor LeftBorder bor RightBorder,
 	<<Result:BigSize>>.
