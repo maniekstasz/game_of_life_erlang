@@ -1,3 +1,4 @@
 .project
 .settings
 ebin
+.DS_Store
