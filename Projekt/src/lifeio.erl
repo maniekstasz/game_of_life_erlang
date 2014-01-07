@@ -61,7 +61,8 @@ writeData(FD,Data) ->
 %% o wskazanym rozmiarze
 testWrite(Size) ->
 		Len = trunc(math:pow(2,Size)),
-		{ok,FD} = lifeWrite('c:\\erlang\\fff.gz',8),
+		{ok,Dir} = file:get_cwd(),
+		{ok,FD} = lifeWrite(Dir ++ '/fff.gz',8),
 		file:write(FD,[Size]),
 		feedData(FD,Len,Len),
 		file:close(FD).
