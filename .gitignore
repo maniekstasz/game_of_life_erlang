@@ -1,0 +1,11 @@
+.project
+.settings
+ebin
+
+# OS X filesystem
+.DS_Store
+
+#InteliJ IDE
+.idea
+*.iml
+
