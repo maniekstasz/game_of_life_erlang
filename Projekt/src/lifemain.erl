@@ -2,11 +2,12 @@
 -compile(export_all).
 
 test() ->
-	{ok, Dir} = file:get_cwd(),
-	{BoardSize, PrevBoard} = lifeio:readDataToBoard(Dir ++ '/fff.gz'),
+
 	Nodes = lifeconc:prepareNodes(),
 	
 	ColumnCount = erlang:length(Nodes), % liczba kolumn odpowiada liczbie węzłów
+	{ok, Dir} = file:get_cwd(),
+	{BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
 	ColumnWidth = BoardSize div ColumnCount,
 	ColumnSize = (ColumnWidth+2) * (BoardSize+2),
 	
@@ -14,8 +15,8 @@ test() ->
 	
 	% od tego momentu iterujemy
 	
-	Board = lifelogic:getBoardExtraTopAndBottom(PrevBoard, BoardSize),
-	Columns = lifelogic:split(ColumnCount, BoardSize, Board),
+	%Board = lifelogic:getBoardExtraTopAndBottom(PrevBoard, BoardSize),
+	%Columns = lifelogic:split(ColumnCount, BoardSize, Board),
 	
 % teoretycznie od tego momentu można zacząć rozsyłać zadania na węzły
 % trzeba jednak uwzględnić narzut danych

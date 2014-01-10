@@ -15,26 +15,43 @@
 
 
 
+
+
 %% Przykładowe użycie funkcji które napisałem. Ta funkcja jest do skasowania.
 %% Jest ona głupio napisana, powinno tytaj wszystko być na listach, ale tak lepiej widać jak działają funkcje.
+
 test() ->
 	{ok,Dir} = file:get_cwd(),
-	{BoardSize, PreBoard} = lifeio:readDataToBoard(Dir ++ '/fff.gz'),
-	Board = getBoardExtraTopAndBottom(PreBoard, BoardSize),
-	ColumnCount = 4,
+	ColumnCount = 32,
+	StartG =now(),
+	{BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
+	StopG=now(),
+	GetTime = timer:now_diff(StopG, StartG),
+	%Board = getBoardExtraTopAndBottom(PreBoard, BoardSize).
+
+
 	ColumnWidth = BoardSize div ColumnCount,
 	{InnerBoard, Left, Right, Zero} = createConstants(ColumnWidth, BoardSize),
-	Columns= split(ColumnCount, BoardSize, Board),
+	
+	%Columns= split(ColumnCount, BoardSize, Board),
 	ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
+		StartB =now(),
 	Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
 	BorderTuples = lifemain:prepareColumnData(Borders, Zero),
 	
-	ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
 	
+	ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
+	StopB=now(),
+	BorderTime = timer:now_diff(StopB, StartB),
+
+	StartN =now(),
 	Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
-	Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
-	Glued = glue(Inners, ColumnWidth, BoardSize),
-	lifeio:writeBoard(Glued, BoardSize,BoardSize).
+	StopN=now(),
+	NextTime = timer:now_diff(StopN, StartN),
+	{GetTime, BorderTime, NextTime}.
+	%Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
+	%Glued = glue(Inners, ColumnWidth, BoardSize),
+	%lifeio:writeBoard(Glued, BoardSize,BoardSize).
 
 %% Tworze bitboardy potrzebne do obliczania i ustawiania granic. 
 %% Należy je obliczyć raz dla każdego podziału i przechowywać je pomiędzy iteracjami
@@ -93,18 +110,16 @@ glue(Boards, Width,Height,Offset, Acc) ->
 	end.
 
 
-%Dzeli podaną tablicę na zadaną ilość kolumn
-%Board musi być podany jako bitstring
-split(ColumnsCount, Width, Board) ->
-	ColumnWidth = Width div ColumnsCount,
-	split(Board,ColumnWidth, Width, 0, []).
-
-split(Board, ColumnWidth, Width, Offset, Acc)->
-	Rest = Width - Offset - ColumnWidth,
-	case Offset =:= Width of
-		true -> Acc;
-		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
-	end.
+%split(ColumnsCount, Width, Board) ->
+%	ColumnWidth = Width div ColumnsCount,
+%	split(Board,ColumnWidth, Width, 0, []).
+%
+%split(Board, ColumnWidth, Width, Offset, Acc)->
+%	Rest = Width - Offset - ColumnWidth,
+%	case Offset =:= Width of
+%		true -> Acc;
+%		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
+%	end.
 
 %% Zwraca tablicę bez krawędzi
 getInnerBoard(Board,BigWidth, BigHeight) ->
@@ -114,8 +129,8 @@ getInnerBoard(Board,BigWidth, BigHeight) ->
 	<< <<Line:BoardSize2>> || <<_:1, Line:BoardSize2, _:1>> <= SmallerBoard >>.
 
 %Dostaje zwykłą tablice i dorzuca do niej zera na górze i na dole
-getBoardExtraTopAndBottom(Board, Width) ->
-	<<0:Width, Board/bits, 0:Width>>.
+%getBoardExtraTopAndBottom(Board, Width) ->
+%	<<0:Width, Board/bits, 0:Width>>.
 
 %Board musi byc podany jako bitstring
 %Zwraca następny stan tablicy
