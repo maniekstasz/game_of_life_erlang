@@ -68,3 +68,31 @@ operateNode(Node, ParentPid, {M,F,A}) ->
 trolo(Var) ->
 	timer:sleep(100),
 	{localPid, Var}.
+	
+%Controluje process na węźle	
+columnProcess(Column,ColumnWidth, Height, Supervisor) ->
+		lifelogic:next(Column, ColumnWidth+2, Height+2),
+		Supervisor ! ok.
+		
+	
+%Supervisor synchronizujacy processy
+supervise(ColumnCount, ColumnWidth, Height, Columns) ->
+	receive
+		start ->
+	
+			Start = now(),
+			[spawn(lifeconc, columnProcess, [Column, ColumnWidth, Height, self()]) || Column <- Columns],
+			synchronize(ColumnCount),
+			Stop = now(),
+			Diff = timer:now_diff(Stop, Start),
+			io:format("~p~n", [Diff]),
+			{ok}
+	end.
+
+synchronize(Counter) ->
+	receive 
+		ok -> case Counter >= 2 of 
+		true -> 		synchronize(Counter -1);
+		false -> {ok}
+		end
+	end. 

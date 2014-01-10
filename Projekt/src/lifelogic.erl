@@ -20,13 +20,13 @@
 %% Przykładowe użycie funkcji które napisałem. Ta funkcja jest do skasowania.
 %% Jest ona głupio napisana, powinno tytaj wszystko być na listach, ale tak lepiej widać jak działają funkcje.
 
-test() ->
+test(ColumnCount) ->
 	{ok,Dir} = file:get_cwd(),
-	ColumnCount = 32,
-	StartG =now(),
+	%ColumnCount = 32,
+	%StartG =now(),
 	{BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
-	StopG=now(),
-	GetTime = timer:now_diff(StopG, StartG),
+%	StopG=now(),
+%	GetTime = timer:now_diff(StopG, StartG),
 	%Board = getBoardExtraTopAndBottom(PreBoard, BoardSize).
 
 
@@ -35,20 +35,22 @@ test() ->
 	
 	%Columns= split(ColumnCount, BoardSize, Board),
 	ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
-		StartB =now(),
+	%	StartB =now(),
 	Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
 	BorderTuples = lifemain:prepareColumnData(Borders, Zero),
 	
 	
 	ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
-	StopB=now(),
-	BorderTime = timer:now_diff(StopB, StartB),
+	Supervisor = spawn(lifeconc,supervise,[ColumnCount, ColumnWidth, BoardSize, ColumnsWithBorders]),
+	Supervisor ! start.
+	%StopB=now(),
+	%BorderTime = timer:now_diff(StopB, StartB),
 
-	StartN =now(),
-	Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
-	StopN=now(),
-	NextTime = timer:now_diff(StopN, StartN),
-	{GetTime, BorderTime, NextTime}.
+	%StartN =now(),
+	%Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
+	%StopN=now(),
+	%NextTime = timer:now_diff(StopN, StartN),
+	%{GetTime, BorderTime, NextTime}.
 	%Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
 	%Glued = glue(Inners, ColumnWidth, BoardSize),
 	%lifeio:writeBoard(Glued, BoardSize,BoardSize).
