@@ -92,14 +92,14 @@ testRemoteMethod(Var) ->
 	{localPid, Var}.
 	
 %% @doc Metoda kontroluje process na wezle
--spec columnProcess(byte(), integer(), integer(), pid()) -> ok.
+-spec columnProcess(bitstring(), integer(), integer(), pid()) -> ok.
 columnProcess(Column,ColumnWidth, Height, Supervisor) ->
 		lifelogic:next(Column, ColumnWidth+2, Height+2),
 		Supervisor ! ok.
 		
 	
 %% @doc Supervisor synchronizujacy processy
--spec supervise(integer(),integer(),integer(),byte()) -> {ok}.
+-spec supervise(integer(),integer(),integer(),any()) -> {ok}.
 supervise(ColumnCount, ColumnWidth, Height, Columns) ->
 	receive
 		start ->

@@ -22,7 +22,7 @@
 %% @doc Metoda tworzaca dane statyczne.
 %%      Do poprawnego przetwarzania danych wymagane
 %%      sa stale, budowane na podstawie rozmiaru tablicy
--spec createConstants(integer(), integer()) -> {bitstring(),bitstring(),bitstring(),bitstring()}.
+-spec createConstants(integer(), integer()) -> {integer(),integer(),integer(),integer()}.
 createConstants(Width, Height) ->
 	BigSize = (Width+2)*(Height+2),
 	Size = (Width+2)*Height,
@@ -42,7 +42,7 @@ createConstants(Width, Height) ->
 %% @doc Metoda przygotowujaca lewa krawedz sasiada.
 %%      Pobiera lewa krawedz boarda i zwraca ja
 %%      jako prawa
--spec getLeftAsRight(bitstring(), bitstring(), integer()) -> bitstring().
+-spec getLeftAsRight(integer(), integer(), integer()) -> integer().
 getLeftAsRight(Board, LeftConstant, Width) ->
 	Board band LeftConstant bsr Width.
 
@@ -50,7 +50,7 @@ getLeftAsRight(Board, LeftConstant, Width) ->
 %% @doc Metoda przygotowujaca prawa krawedz sasiada.
 %%      Pobiera prawa krawedz boarda i zwraca ja
 %%      jako lewa
--spec getRightAsLeft(bitstring(), bitstring(), integer()) -> bitstring().
+-spec getRightAsLeft(integer(), integer(), integer()) -> integer().
 getRightAsLeft(Board, RightConstant, Width) ->
 	Board band RightConstant bsl Width.
 
@@ -59,7 +59,7 @@ getRightAsLeft(Board, RightConstant, Width) ->
 %%      Zwraca obie krawedzie w formacie
 %%      {lewa jako prawa, board, prawa jako lewa}.
 %%      Co ważne fukcja zwraca Integery nie bitstringi
--spec getBorders(bitstring(), bitstring(), bitstring(), integer(), integer()) -> {bitstring(), bitstring(), bitstring()}.
+-spec getBorders(bitstring(), integer(), integer(), integer(), integer()) -> {integer(), bitstring(), integer()}.
 getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
 	<<BoardAsInteger:BigSize>> = Board,
 	{getLeftAsRight(BoardAsInteger, LeftConstant, Width), Board, getRightAsLeft(BoardAsInteger, RightConstant, Width)}.
@@ -69,7 +69,7 @@ getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
 %%      LeftBorder to krawedz ktora mamy przypisac
 %%      po lewej stronie wiec bedzie to RightAsLeft,
 %%      RightBorder analogicznie
--spec setBorders(bitstring(), integer(), {bitstring(), bitstring(), bitstring()}) -> bitstring().
+-spec setBorders(integer(), integer(), {integer(), bitstring(), integer()}) -> bitstring().
 setBorders(InnerConstant, BigSize, {LeftBorder, Board, RightBorder}) ->
 	<<BoardAsInteger:BigSize>> = Board,
 	Result = BoardAsInteger band InnerConstant bor LeftBorder bor RightBorder,
