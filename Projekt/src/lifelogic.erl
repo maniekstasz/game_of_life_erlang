@@ -91,16 +91,6 @@ glue(Boards, Width,Height,Offset, Acc) ->
 	end.
 
 
-%split(ColumnsCount, Width, Board) ->
-%	ColumnWidth = Width div ColumnsCount,
-%	split(Board,ColumnWidth, Width, 0, []).
-%
-%split(Board, ColumnWidth, Width, Offset, Acc)->
-%	Rest = Width - Offset - ColumnWidth,
-%	case Offset =:= Width of
-%		true -> Acc;
-%		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
-%	end.
 
 %% @doc Metoda zwraca tablice bez krawedzi
 -spec getInnerBoard(bitstring(),integer(),integer()) -> bitstring().
