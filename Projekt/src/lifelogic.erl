@@ -1,62 +1,28 @@
 %% @author Szymon Konicki
-%% @doc Moduł odpowiedzialny za dzielenie planszy na kilka kolumn oraz za wyliczanie następnej postaci tablicy.
-
-
+%% @doc Modul logiczny.
+%%      Zajmuje sie dzieleniem, laczeniem boardu,
+%%      obliczaniem nastepnego stanu, wyliczaniem
+%%      krawedzi - przetwarzaniem danych.
 -module(lifelogic).
+-export([
+  createConstants/2,
+  getLeftAsRight/3,
+  getRightAsLeft/3,
+  getBorders/5,
+  setBorders/3,
+  next/3
+]).
 
--compile(export_all).
-
-%-export([test/0,createConstants/2,getBoardExtraTopAndBottom/2, getInnerBoard/3, next/3, split/3, getBorders/5, glue/3, setBorders/4]).
-
-%%    ---------------- WAŻNE -----------------
-%% Width, Height - rozmiary tablicy niepowiekszonej
-%% BigWidth, BigHeight - rozmiary tablicy powiekszonej
-%% BigSize - analogicznie
-
-
-
-
-
-%% Przykładowe użycie funkcji które napisałem. Ta funkcja jest do skasowania.
-%% Jest ona głupio napisana, powinno tytaj wszystko być na listach, ale tak lepiej widać jak działają funkcje.
-
-test(ColumnCount) ->
-	{ok,Dir} = file:get_cwd(),
-	%ColumnCount = 32,
-	%StartG =now(),
-	{BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
-%	StopG=now(),
-%	GetTime = timer:now_diff(StopG, StartG),
-	%Board = getBoardExtraTopAndBottom(PreBoard, BoardSize).
+% === WAŻNE ===
+% Width, Height - rozmiary tablicy niepowiekszonej
+% BigWidth, BigHeight - rozmiary tablicy powiekszonej
+% BigSize - analogicznie
 
 
-	ColumnWidth = BoardSize div ColumnCount,
-	{InnerBoard, Left, Right, Zero} = createConstants(ColumnWidth, BoardSize),
-	
-	%Columns= split(ColumnCount, BoardSize, Board),
-	ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
-	%	StartB =now(),
-	Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
-	BorderTuples = lifemain:prepareColumnData(Borders, Zero),
-	
-	
-	ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
-	Supervisor = spawn(lifeconc,supervise,[ColumnCount, ColumnWidth, BoardSize, ColumnsWithBorders]),
-	Supervisor ! start.
-	%StopB=now(),
-	%BorderTime = timer:now_diff(StopB, StartB),
-
-	%StartN =now(),
-	%Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
-	%StopN=now(),
-	%NextTime = timer:now_diff(StopN, StartN),
-	%{GetTime, BorderTime, NextTime}.
-	%Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
-	%Glued = glue(Inners, ColumnWidth, BoardSize),
-	%lifeio:writeBoard(Glued, BoardSize,BoardSize).
-
-%% Tworze bitboardy potrzebne do obliczania i ustawiania granic. 
-%% Należy je obliczyć raz dla każdego podziału i przechowywać je pomiędzy iteracjami
+%% @doc Metoda tworzaca dane statyczne.
+%%      Do poprawnego przetwarzania danych wymagane
+%%      sa stale, budowane na podstawie rozmiaru tablicy
+-spec createConstants(integer(), integer()) -> {bitstring(),bitstring(),bitstring(),bitstring()}.
 createConstants(Width, Height) ->
 	BigSize = (Width+2)*(Height+2),
 	Size = (Width+2)*Height,
@@ -68,37 +34,50 @@ createConstants(Width, Height) ->
 	PreRight = PreBigRight bsl 1,
 	<<Zero:BigSize>> = <<0:BigSize>>,
 	<<InnerBoard:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreInnerBoard:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
-	%<<Borders:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreBorders:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
-	%<<BigLeft:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreBigLeft:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
-	%<<BigRight:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreBigRight:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
 	<<Left:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreLeft:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
 	<<Right:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreRight:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
 	{InnerBoard, Left, Right, Zero}.
 
 
-
-%% Pobiera lewą krawędź i zwraca ją jako prawą
+%% @doc Metoda przygotowujaca lewa krawedz sasiada.
+%%      Pobiera lewa krawedz boarda i zwraca ja
+%%      jako prawa
+-spec getLeftAsRight(bitstring(), bitstring(), integer()) -> bitstring().
 getLeftAsRight(Board, LeftConstant, Width) ->
 	Board band LeftConstant bsr Width.
 
-%% Pobiera prawą krawędź i zwraca ją jako lewą
+
+%% @doc Metoda przygotowujaca prawa krawedz sasiada.
+%%      Pobiera prawa krawedz boarda i zwraca ja
+%%      jako lewa
+-spec getRightAsLeft(bitstring(), bitstring(), integer()) -> bitstring().
 getRightAsLeft(Board, RightConstant, Width) ->
 	Board band RightConstant bsl Width.
 
-%% Zwraca obie krawędzie {lewą jako prawą, prawą jako lewą} patrz funkcje getLeftAsRight i getRightAsLeft
-%% Co ważne fukcja zwaraca Integery nie bitstringi
+
+%% @doc Metoda przygotowujaca krawedzie.
+%%      Zwraca obie krawedzie w formacie
+%%      {lewa jako prawa, board, prawa jako lewa}.
+%%      Co ważne fukcja zwraca Integery nie bitstringi
+-spec getBorders(bitstring(), bitstring(), bitstring(), integer(), integer()) -> {bitstring(), bitstring(), bitstring()}.
 getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
 	<<BoardAsInteger:BigSize>> = Board,
 	{getLeftAsRight(BoardAsInteger, LeftConstant, Width), Board, getRightAsLeft(BoardAsInteger, RightConstant, Width)}.
 
-%% Ustawia krawędzie, LeftBorder to krawędź którą mamy przypisać po lewej stronie wiec bedzie to RightAsLeft,
-%% RightBorder analogicznie
+
+%% @doc Metoda ustawia krawedzie.
+%%      LeftBorder to krawedz ktora mamy przypisac
+%%      po lewej stronie wiec bedzie to RightAsLeft,
+%%      RightBorder analogicznie
+-spec setBorders(bitstring(), integer(), {bitstring(), bitstring(), bitstring()}) -> bitstring().
 setBorders(InnerConstant, BigSize, {LeftBorder, Board, RightBorder}) ->
 	<<BoardAsInteger:BigSize>> = Board,
 	Result = BoardAsInteger band InnerConstant bor LeftBorder bor RightBorder,
 	<<Result:BigSize>>.
 
-%% Skleja kolumny do siebie
+
+%% @doc Metoda skleja kolumny do siebie
+-spec glue(bitstring(), integer(), integer()) -> bitstring().
 glue(Boards, Width, Height) ->
 	glue(Boards,Width, Height,0, <<0:0>>).
 glue(Boards, Width,Height,Offset, Acc) ->
@@ -123,19 +102,22 @@ glue(Boards, Width,Height,Offset, Acc) ->
 %		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
 %	end.
 
-%% Zwraca tablicę bez krawędzi
+%% @doc Metoda zwraca tablice bez krawedzi
+-spec getInnerBoard(bitstring(),integer(),integer()) -> bitstring().
 getInnerBoard(Board,BigWidth, BigHeight) ->
 	SmallerBoardSize = (BigWidth)*(BigHeight-2),
 	<<_:BigWidth, SmallerBoard:SmallerBoardSize/bits, _:BigWidth>> = Board,
 	BoardSize2 = BigWidth - 2,
 	<< <<Line:BoardSize2>> || <<_:1, Line:BoardSize2, _:1>> <= SmallerBoard >>.
 
-%Dostaje zwykłą tablice i dorzuca do niej zera na górze i na dole
+%Dostaje zwykla tablice i dorzuca do niej zera na gorze i na dole
 %getBoardExtraTopAndBottom(Board, Width) ->
 %	<<0:Width, Board/bits, 0:Width>>.
 
-%Board musi byc podany jako bitstring
-%Zwraca następny stan tablicy
+%% @doc Metoda wykonuje iteracje planszy wg reguly Conway'a.
+%%      Board musi byc podany jako bitstring
+%%      Zwraca nastepny stan tablicy
+-spec next(bitstring(),integer(),integer()) -> bitstring().
 next(BoardBitString, BigWidth, BigHeight) ->
 	Size = BigWidth*BigHeight,
 	<<Board:Size>> = BoardBitString,
@@ -158,9 +140,9 @@ next(BoardBitString, BigWidth, BigHeight) ->
 	<<IntegerBoard:Size>>.
 
 
+%% @doc Metoda wylicza liczbe sasiadow
+-spec sum(any(),any()) -> any().
 sum([], Sums) -> Sums;
-
-%Wylicza liczbę sąsiadów
 sum([L|Tail], [S3, S2, S1, S0]) ->
 	NL = bnot L,
 	Sums = [((S3 band NL) bor (S2 band L)) , ((S2 band NL) bor (S1 band L)) , ((S1 band NL) bor (S0 band L)), (S0 band NL)],

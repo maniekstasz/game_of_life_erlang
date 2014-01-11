@@ -1,6 +1,43 @@
 -module(lifemain).
 -compile(export_all).
 
+-import(lifelogic,[createConstants/2,getBorders/5, setBorders/3]).
+
+test(ColumnCount) ->
+  {ok,Dir} = file:get_cwd(),
+  %ColumnCount = 32,
+  %StartG =now(),
+  {BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
+%	StopG=now(),
+%	GetTime = timer:now_diff(StopG, StartG),
+  %Board = getBoardExtraTopAndBottom(PreBoard, BoardSize).
+
+
+  ColumnWidth = BoardSize div ColumnCount,
+  {InnerBoard, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
+
+  %Columns= split(ColumnCount, BoardSize, Board),
+  ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
+  %	StartB =now(),
+  Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
+  BorderTuples = lifemain:prepareColumnData(Borders, Zero),
+
+
+  ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
+  Supervisor = spawn(lifeconc,supervise,[ColumnCount, ColumnWidth, BoardSize, ColumnsWithBorders]),
+  Supervisor ! start.
+%StopB=now(),
+%BorderTime = timer:now_diff(StopB, StartB),
+
+%StartN =now(),
+%Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
+%StopN=now(),
+%NextTime = timer:now_diff(StopN, StartN),
+%{GetTime, BorderTime, NextTime}.
+%Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
+%Glued = glue(Inners, ColumnWidth, BoardSize),
+%lifeio:writeBoard(Glued, BoardSize,BoardSize).
+
 test() ->
 
 	Nodes = lifeconc:prepareNodes(),
