@@ -22,6 +22,7 @@
 % BigSize - analogicznie
 
 
+
 %% @doc Metoda tworzaca dane statyczne.
 %%      Do poprawnego przetwarzania danych wymagane
 %%      sa stale, budowane na podstawie rozmiaru tablicy
@@ -128,18 +129,20 @@ next(BoardBitString, BigWidth, BigHeight) ->
 	Neigh = [Board bsl 1,
 		Board bsl 1 bsl BigWidth,
 		Board bsl BigWidth,
-		Board bsr 1,
 		Board bsr 1 bsl BigWidth,
+		Board bsr 1,
 		Board bsr 1 bsr BigWidth,
 		Board bsr BigWidth,
 		Board bsl 1 bsr BigWidth],
 		
-	[L0, L1| Tail] = Neigh,		 
-	S0 = bnot (L0 band L1),
-	S1 = L0 bxor L1,
+	[L0, L1| Tail] = Neigh,	
 	S2 = L0 band L1,
+	S0 = bnot (L0 bor L1),
+	S1 = L0 bxor L1,
+	
 
 	[FS3, FS2| Rest] = sum(Tail, [0, S2,S1,S0]),
+
 	IntegerBoard = (bnot Board band FS3) bor (Board band FS3) bor (Board band FS2),
 	<<IntegerBoard:Size>>.
 

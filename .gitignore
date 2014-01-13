@@ -4,6 +4,7 @@
 #Eclipse IDE
 .project
 .settings
+
 ebin
 
 # OS X filesystem

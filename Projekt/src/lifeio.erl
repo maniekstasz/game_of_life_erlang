@@ -1,6 +1,6 @@
 -module(lifeio).
--export([prepareBoardToWrite/2,lifeRead/1,readData/2,
-  lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3,readDataToBoard/1]).
+-export([lifeRead/1,readData/2,
+  lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3,readDataToBoard/1,writeBoardToFile/2]).
 
 
 %% Funkcja do wypisywania tablicy na ekran
@@ -11,6 +11,20 @@ writeBoard(Board, Width, Height) ->
 	io:fwrite("~s~n", [Data]),
 	writeBoard(Rest,Width, Height-1).
 
+writeLineByLine(_,_,_,0) -> ok;
+writeLineByLine(Board, BoardSize, FD, Count)->
+	<<A:BoardSize, Rest/bits>> = Board,
+	Data = [B + 48 || <<B:1>> <= <<A:BoardSize>>],
+	writeData(FD, Data),
+	writeLineByLine(Rest, BoardSize,FD, Count-1).
+	
+writeBoardToFile(Board, BoardSize) ->
+	{ok,Dir} = file:get_cwd(),
+	Size = trunc(math:log(BoardSize)/math:log(2)),
+	{ok,FD} = lifeWrite(Dir ++ '/fffout.gz',8),
+	file:write(FD, [Size]),
+	writeLineByLine(Board, BoardSize,FD, BoardSize),
+	file:close(FD).
 
 %% otwarcie pliku do wczytywania
 %% zwracany jest deskryptor pliku i rozmiar danych/planszy
@@ -61,13 +75,14 @@ readDataToColumns(FileName, ColumnsCount) ->
 	Boards = readParts(FD, BoardSize*BoardSize, BoardSize,ColumnsCount),
 	{BoardSize, Boards}.
 
-prepareBoardToWrite(0, _, Data) ->Data;
-prepareBoardToWrite(BoardSize, Board, Data) ->
-	<<Bit:1/integer,Rest/bits>> = Board,
-	prepareBoardToWrite(BoardSize-1, Rest, [Bit + 48 | Data]).
+%prepareBoardToWrite(0, _, Data) ->Data;
+%prepareBoardToWrite(BoardSize, Board, Data) ->
+%	<<A:BoardSize, Rest/bits>> = Board,
+%	Data = [B + 48 || <<B:1>> <= <<A:BoardSize>>],
+%	writeBoard(BoardSize,Rest, Data).
 
-prepareBoardToWrite(Board, BoardSize) ->
-	prepareBoardToWrite(BoardSize, Board,[]).
+
+
 	
 	
 

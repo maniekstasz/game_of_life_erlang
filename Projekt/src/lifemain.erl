@@ -3,7 +3,7 @@
 -export([testTimeLocal/0,testTimeLocal/2]).
 
 -export([calculateSingleColumn/3]).
--export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2]).
+-export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2,test/0]).
 
 -export([iterateLocal/3]).
 
@@ -22,7 +22,13 @@
 
 
 
-
+test() ->
+	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', 4),
+	ColumnWidth = BoardSize div 4,
+	NewColumns = lifemain:iterateLocal(Columns, BoardSize, 4),
+	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, NewColumns),
+	Glued = lifelogic:glue(Inners, ColumnWidth, BoardSize),
+	Data = lifeio:writeBoardToFile(Glued, BoardSize).
 
 testRemote(Nodes, NumberOfProcesses) ->
   %Nodes = [],
