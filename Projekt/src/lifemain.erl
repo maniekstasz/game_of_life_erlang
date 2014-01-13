@@ -37,8 +37,7 @@ test(ColumnCount) ->
   %Columns= split(ColumnCount, BoardSize, Board),
   ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
   %	StartB =now(),
-  Borders = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ColumnSize) end, Columns),
-  BorderTuples = lifemain:prepareColumnData(Borders, Zero),
+  BorderTuples = lifemain:prepareColumnTuples(Columns, BoardSize),
 
 
   ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
@@ -120,13 +119,13 @@ iterate(Board, BoardSize, Nodes, ProcessCount, IterationCounter) ->
   %io:format("~n"),
 
   _LocalResult = localOperateColumns(ColumnTuples, BoardSize, ColumnWidth),
-  _RemoteResult = remoteOperateColumns(NodeKeyList),
+  %_RemoteResult = remoteOperateColumns(NodeKeyList),
 
 %% @TODO zamiana nodekeylist na tablice danych
   %ResultColumns = gatherResult(NodeKeyList, NodesCount),
 
   %Glued = lifelogic:glue(Result, ColumnWidth, BoardSize),
-  iterate(Result, BoardSize, Nodes, ProcessCount, IterationCounter-1).
+  iterate(_LocalResult, BoardSize, Nodes, ProcessCount, IterationCounter-1).
 
 
 
