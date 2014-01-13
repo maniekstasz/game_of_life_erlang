@@ -55,7 +55,8 @@ readDataToBoard(FileName) ->
 %% Wczytuje tablicę z pliku
 %% Dzieli ja na zadana liczbe column. Zwraca rozmiar calej tablicy liste kolumn i rozmiar kolumny(bez dwoch dodatkowych bitow)
 readDataToColumns(FileName, ColumnsCount) ->
-	{FD,Pow} = lifeRead(FileName),
+  {ok,Dir} = file:get_cwd(),
+	{FD,Pow} = lifeRead(Dir ++ '/' ++ FileName),
 	BoardSize = trunc(math:pow(2, Pow)),
 	Boards = readParts(FD, BoardSize*BoardSize, BoardSize,ColumnsCount),
 	{BoardSize, Boards}.
