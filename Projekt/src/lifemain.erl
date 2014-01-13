@@ -1,12 +1,12 @@
 -module(lifemain).
 
--export([test/1, testTimeLocal/0]).
+-export([testTimeLocal/0]).
 
 -export([localOperateColumns/3,calculateSingleColumn/3]).
 -export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2]).
 -export([indexOf/2,loadWholeBoard/1]).
 
--export([iterate/5]).
+-export([iterateLocal/3]).
 
 -type board() :: bitstring().
 -type column() :: bitstring().
@@ -21,48 +21,7 @@
 -type nodeKeys() :: [nodeKey()].
 
 
-test(ColumnCount) ->
-  {ok,Dir} = file:get_cwd(),
-  %ColumnCount = 32,
-  %StartG =now(),
-  {BoardSize, Columns} = lifeio:readDataToColumns(Dir ++ '/fff.gz', ColumnCount),
-%	StopG=now(),
-%	GetTime = timer:now_diff(StopG, StartG),
-  %Board = getBoardExtraTopAndBottom(PreBoard, BoardSize).
 
-
-  ColumnWidth = BoardSize div ColumnCount,
-  {InnerBoard, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
-
-  %Columns= split(ColumnCount, BoardSize, Board),
-  ColumnSize = (ColumnWidth + 2) *(BoardSize+2),
-  %	StartB =now(),
-  BorderTuples = lifemain:prepareColumnTuples(Columns, BoardSize),
-
-
-  ColumnsWithBorders = lists:map(fun(X) -> lifelogic:setBorders(InnerBoard, ColumnSize, X) end, BorderTuples),
-  Supervisor = spawn(lifeconc,supervise,[ColumnCount, ColumnWidth, BoardSize, ColumnsWithBorders]),
-  Supervisor ! start.
-%StopB=now(),
-%BorderTime = timer:now_diff(StopB, StartB),
-
-%StartN =now(),
-%Nexts = lists:map(fun(Elem) -> next(Elem, ColumnWidth+2, BoardSize+2) end, ColumnsWithBorders),
-%StopN=now(),
-%NextTime = timer:now_diff(StopN, StartN),
-%{GetTime, BorderTime, NextTime}.
-%Inners = lists:map(fun(Elem) -> getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, Nexts),
-%Glued = glue(Inners, ColumnWidth, BoardSize),
-%lifeio:writeBoard(Glued, BoardSize,BoardSize).
-
-
-
-
-testTimeLocal() ->
-  {BoardSize, Board} = lifemain:loadWholeBoard('/fff.gz'),
-  io:format("Start (rozmiar: ~B)~n", [BoardSize]),
-  countTimeForData(Board, BoardSize, [], 128, 1),
-  io:format("Stop~n").
 
 
 testRemote(Nodes, NumberOfProcesses) ->
@@ -72,47 +31,35 @@ testRemote(Nodes, NumberOfProcesses) ->
   %lifeio:writeBoard(Board, BoardSize, BoardSize),
   io:format("Start~n"),
   %FinalBoard = iterate(Board, BoardSize, Nodes, 1, 1),
-  countTimeForData(Board, BoardSize, Nodes, 128, 1),
+  %countTimeForData(Board, BoardSize, Nodes, 128, 1),
   io:format("Stop~n").%,
 %lifeio:writeBoard(FinalBoard, BoardSize, BoardSize).
 
 
-countTimeForData(_,_,_,0,_) -> ok;
-countTimeForData(Board, BoardSize, Nodes, Processes, Iterations) ->
-  {Time,_} = timer:tc(lifemain, iterate, [Board, BoardSize, Nodes, Processes, Iterations]),
-  io:format("Przeliczenie dla ~B procesow: ~b mikrosekund~n", [Processes, Time]),
-  NewP = Processes div 2,
-  countTimeForData(Board, BoardSize, Nodes, NewP, Iterations).
 
 
 
 %% @doc Metoda pojedynczej, calosciowej iteracji. Glowny board jest rozszerzany w pionie o zera, nastepnie jest dzielony
 %%      na kolumny w liczbie liczba_wezlow * liczba_procesow_na_wezel, kazda porcja danych jest przesylana do osobnych
 %%      wezlow, a po zakonczeniu obliczen, dane sa scalane.
--spec iterate(board(), integer(), nodes(), integer(), integer()) -> board().
-iterate(Board,_,_,_,0) -> Board;
-iterate(Board, BoardSize, Nodes, ProcessCount, IterationCounter) ->
+-spec iterate(columns(), integer(), nodes(), integer(), integer()) -> columns().
+iterate(Columns,_,_,_,0) -> Columns;
+iterate(Columns, BoardSize, Nodes, ProcessCount, IterationCounter) ->
   %io:format("iteracja ~B~n", [IterationCounter]),
 %% @TODO wyznaczyc najlepszy mnoznik dla kolumn - testy
 
-  NodesCount = length(Nodes),
-  ColumnsCount = NodesCount * ProcessCount,
+  NodesCount = 1,%length(Nodes),
+  ColumnsCount = length(Columns),
   ColumnWidth = BoardSize div ColumnsCount,
-  %io:format("proc:~B node:~B colu:~B widt:~B size:~B~n",
-  %  [ProcessCount,NodesCount,ColumnsCount, ColumnWidth, BoardSize]),
 
-  ExtendedBoard = lifelogic:getBoardExtraTopAndBottom(Board, BoardSize),
-  %io:format("rozszerzony board~n"),
-
-  Columns = lifelogic:split(ColumnsCount, BoardSize, ExtendedBoard),
   ColumnTuples = prepareColumnTuples(Columns, BoardSize),
   %io:format("board podzielony na ~B kolumn~n", [ColumnsCount]),
 
-  NodeKeyList = lists:map(fun(X) ->
-    NodeChunk = lists:sublist(ColumnTuples,(X-1)*ProcessCount+1, ProcessCount),
-    Node = lists:nth(X,Nodes),
-    initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) end,
-    lists:seq(1,NodesCount)),
+  %NodeKeyList = lists:map(fun(X) ->
+  %  NodeChunk = lists:sublist(ColumnTuples,(X-1)*ProcessCount+1, ProcessCount),
+  %  Node = lists:nth(X,Nodes),
+  %  initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) end,
+  %  lists:seq(1,NodesCount)),
   %io:format("Przygotowano porcje dla wezlow~n"),
   %io:format("Stworzono procesy i przeslano dane do: ~n"),
   %io:write(NodeKeyList),
@@ -126,6 +73,30 @@ iterate(Board, BoardSize, Nodes, ProcessCount, IterationCounter) ->
 
   %Glued = lifelogic:glue(Result, ColumnWidth, BoardSize),
   iterate(_LocalResult, BoardSize, Nodes, ProcessCount, IterationCounter-1).
+
+
+testTimeLocal() -> testTimeLocal(256).
+testTimeLocal(0) -> ok;
+testTimeLocal(Count) ->
+  {LoadTime, Res} = timer:tc(lifeio, readDataToColumns, ['fff.gz', Count]),
+  {BoardSize, Columns} = Res,
+  io:format("Ladowanie tablicy (~B kolumn) o rozmiarze ~B w ciagu ~B mikrosekund~n", [length(Columns), BoardSize, LoadTime]),
+
+  IterationsNumber = 1,
+  {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns, BoardSize, IterationsNumber]),
+  io:format("~B procesow, ~B iteracji -> ~B mikrosekund~n", [Count, IterationsNumber, IterateTime]),
+  NewCount = Count div 2,
+  testTimeLocal(NewCount).
+
+
+iterateLocal(Columns, _, 0) -> Columns;
+iterateLocal(Columns, BoardSize, IterationCounter) ->
+  io:format("Lokalna iteracja nr ~B~n", [IterationCounter]),
+  ColumnsCount = length(Columns),
+  ColumnWidth = BoardSize div ColumnsCount,
+  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
+  Result = localOperateColumns(ColumnTuples, BoardSize, ColumnWidth),
+  iterateLocal(Result, BoardSize, IterationCounter-1).
 
 
 
