@@ -1,10 +1,9 @@
 -module(lifemain).
 
--export([testTimeLocal/0]).
+-export([testTimeLocal/0,testTimeLocal/2]).
 
--export([localOperateColumns/3,calculateSingleColumn/3]).
+-export([calculateSingleColumn/3]).
 -export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2]).
--export([indexOf/2,loadWholeBoard/1]).
 
 -export([iterateLocal/3]).
 
@@ -15,6 +14,7 @@
 -type columnTuple() :: {border(), column(), border()}.
 -type columnTuples() :: [columnTuple()].
 -type columnTriple() :: {columnTuple(),columnTuple(),columnTuple()}.
+-type columnTriples() :: [columnTriple()].
 -type nodes() :: [node()].
 -type key() :: pid().
 -type nodeKey() :: {node(), key()}.
@@ -65,38 +65,15 @@ iterate(Columns, BoardSize, Nodes, ProcessCount, IterationCounter) ->
   %io:write(NodeKeyList),
   %io:format("~n"),
 
-  _LocalResult = localOperateColumns(ColumnTuples, BoardSize, ColumnWidth),
+  %_LocalResult = localOperateColumns(ColumnTuples, BoardSize, ColumnWidth),
   %_RemoteResult = remoteOperateColumns(NodeKeyList),
 
 %% @TODO zamiana nodekeylist na tablice danych
   %ResultColumns = gatherResult(NodeKeyList, NodesCount),
-
+ok.
   %Glued = lifelogic:glue(Result, ColumnWidth, BoardSize),
-  iterate(_LocalResult, BoardSize, Nodes, ProcessCount, IterationCounter-1).
+  %iterate(_LocalResult, BoardSize, Nodes, ProcessCount, IterationCounter-1).
 
-
-testTimeLocal() -> testTimeLocal(256).
-testTimeLocal(0) -> ok;
-testTimeLocal(Count) ->
-  {LoadTime, Res} = timer:tc(lifeio, readDataToColumns, ['fff.gz', Count]),
-  {BoardSize, Columns} = Res,
-  io:format("Ladowanie tablicy (~B kolumn) o rozmiarze ~B w ciagu ~B mikrosekund~n", [length(Columns), BoardSize, LoadTime]),
-
-  IterationsNumber = 1,
-  {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns, BoardSize, IterationsNumber]),
-  io:format("~B procesow, ~B iteracji -> ~B mikrosekund~n", [Count, IterationsNumber, IterateTime]),
-  NewCount = Count div 2,
-  testTimeLocal(NewCount).
-
-
-iterateLocal(Columns, _, 0) -> Columns;
-iterateLocal(Columns, BoardSize, IterationCounter) ->
-  io:format("Lokalna iteracja nr ~B~n", [IterationCounter]),
-  ColumnsCount = length(Columns),
-  ColumnWidth = BoardSize div ColumnsCount,
-  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
-  Result = localOperateColumns(ColumnTuples, BoardSize, ColumnWidth),
-  iterateLocal(Result, BoardSize, IterationCounter-1).
 
 
 
@@ -132,14 +109,40 @@ initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) ->
   NodeKey.
 
 
+testTimeLocal() -> testTimeLocal(256, 10).
 %% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda lokalnie przeliczajaca kolumny. Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
+%% @doc Metoda testujaca wydajnosc lokalnej maszyny. Dla podanej liczby procesow i iteracji wykonuje obliczenia dla
+%%      wszystkich kolejnych iteracji (od jednej do zadanej, krok N+1) i wszystkich mozliwych liczb procesow (od zadanej do
+%%      jednego procesu, krok N/2).
+%% ---------------------------------------------------------------------------------------------------------------------
+-spec testTimeLocal(integer(), integer()) -> ok.
+testTimeLocal(0,_) -> ok;
+testTimeLocal(Count, IterationsNumber) ->
+  {LoadTime, {BoardSize, Columns}} = timer:tc(lifeio, readDataToColumns, ['/fff.gz', Count]),
+  io:format("liczba procesow: ~B, rozmiar planszy: ~B, czas ladowania: ~B~n[liczba iteracji, czas iteracji]~n",
+    [Count, BoardSize, LoadTime]),
+  lists:map(fun(X) ->
+    {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns, BoardSize, X]),
+    io:format("~w~n", [[X, IterateTime]]) end,
+    lists:seq(1,IterationsNumber)),
+  io:format("~n"),
+  NewCount = Count div 2,
+  testTimeLocal(NewCount, IterationsNumber).
+
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda iterujaca na lokalnej maszynie. Z podanych kolumn tworzy krotki kolumn, ktore nastepnie rozsyla do
+%%      Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
 %%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec localOperateColumns(columnTuples(), integer(), integer()) -> column().
-localOperateColumns(ColumnTuples, BoardSize, ColumnWidth) ->
-  CalculatedColumns = rpc:pmap({lifemain,calculateSingleColumn},[BoardSize,ColumnWidth],ColumnTuples),
-  CalculatedColumns.
+-spec iterateLocal(columns(), integer(), integer()) -> columns().
+iterateLocal(Columns, _, 0) -> Columns;
+iterateLocal(Columns, BoardSize, IterationCounter) ->
+  ColumnsCount = length(Columns),
+  ColumnWidth = BoardSize div ColumnsCount,
+  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
+  Result = rpc:pmap({lifemain,calculateSingleColumn},[BoardSize,ColumnWidth],ColumnTuples),
+  iterateLocal(Result, BoardSize, IterationCounter-1).
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -153,8 +156,8 @@ calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth) ->
   ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
   ColumnWithBorders = lifelogic:setBorders(InnerBoardConst, ExtendedColumnSize, ColumnTuple),
   Next = lifelogic:next(ColumnWithBorders, ColumnWidth+2, BoardSize+2),
-  Inner = lifelogic:getInnerBoard(Next, ColumnWidth+2, BoardSize+2),
-  Inner.
+  %Inner = lifelogic:getInnerBoard(Next, ColumnWidth+2, BoardSize+2),
+  Next.
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -180,6 +183,7 @@ prepareColumnTuples(Columns, BoardSize) ->
 %% @doc Metoda tworzaca trojke kolumn. Trojka kolumn to krotka zawierajaca 3 krotki kolumn - poprzedniej, biezacej oraz
 %%      nastepnej kolumny. Metoda jest jednym z etapow tworzenia krotek kolumn - wygodnych do przetwarzania struktur.
 %% ---------------------------------------------------------------------------------------------------------------------
+-spec borderTuplesToColumnTriples(columnTuples()) -> columnTriples().
 borderTuplesToColumnTriples(BorderTuples) ->
   ExtendedBorderTuples = [blankstart] ++ BorderTuples ++ [blankend],
   ColumnTriplets = lists:map(fun(BorderTuple) ->
@@ -211,7 +215,7 @@ columnTripleToTuple(ColumnTriple, Zero) ->
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda pomocnicza. Zwraca indeks obiektu na liscie.
+%% @doc Metoda pomocnicza, zwraca indeks obiektu na liscie.
 %% ---------------------------------------------------------------------------------------------------------------------
 -spec indexOf(any(),list()) -> integer().
 indexOf(Elem,List) -> indexOf(Elem,List, 1).
@@ -221,11 +225,3 @@ indexOf(Elem, List, Index) ->
 		true -> Index;
 		false -> indexOf(Elem,List,Index+1)
 	end.
-
-
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda pomocnicza. Laduje cala tablice z podanego pliku.
-%% ---------------------------------------------------------------------------------------------------------------------
-loadWholeBoard(Filename) ->
-  {ok, Dir} = file:get_cwd(),
-  lifeio:readDataToBoard(Dir ++ Filename).
