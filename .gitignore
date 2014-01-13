@@ -1,3 +1,7 @@
+*.beam
+*.gz
+
+#Eclipse IDE
 .project
 .settings
 ebin
