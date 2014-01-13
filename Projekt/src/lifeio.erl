@@ -1,5 +1,6 @@
 -module(lifeio).
--export([prepareBoardToWrite/2,lifeRead/1,readData/2,lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3]).
+-export([prepareBoardToWrite/2,lifeRead/1,readData/2,
+  lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3,readDataToBoard/1]).
 
 
 %% Funkcja do wypisywania tablicy na ekran
@@ -43,6 +44,13 @@ readParts(FD, Total, Width, Count) ->
 	ColumnWidth = Width div Count + 2,
 	Acc = [<<0:ColumnWidth/unit:1>> || _ <- lists:seq(1, Count)],
 	readParts(FD, Total, ColumnWidth-2,Count, Acc).
+
+readDataToBoard(FileName) ->
+  {FD,Pow} = lifeRead(FileName),
+  BoardSize = trunc(math:pow(2, Pow)),
+  Data = readData(FD, BoardSize*BoardSize),
+  Board = << <<Bin:1>> || Bin <- Data >>,
+  {BoardSize, Board}.
 
 %% Wczytuje tablicę z pliku
 %% Dzieli ja na zadana liczbe column. Zwraca rozmiar calej tablicy liste kolumn i rozmiar kolumny(bez dwoch dodatkowych bitow)
