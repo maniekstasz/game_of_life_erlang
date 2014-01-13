@@ -7,13 +7,12 @@
 -export([
   prepareNodes/0,
   loadModule/2,
-  operateNodes/4,
-  listen/1,
+  gatherResult/2,
   operateNode/3,
-  testRemoteMethod/1,
   columnProcess/4,
   supervise/4,
-  synchronize/1
+  synchronize/1,
+  createNode/3
 ]).
 
 
@@ -27,45 +26,59 @@
 %% @doc Metoda przygotowuje wezly do przetwarzania.
 %%      Pobierana jest lista wezlow z modulu net_adm,
 %%      nastepnie do wszystkich wezlow wgrywany jest
-%%      skompilowany kod modulow 'lifeconc' oraz 'lifelofic'
+%%      skompilowany kod modulow 'lifeconc' oraz 'lifelofic',
+%%      ktore sa wymagane do poprawnego dzialania programu
 -spec prepareNodes() -> ok.
 prepareNodes() ->
 	Nodes = net_adm:world(),
-	io:format("Have all nodes~n"),
-	loadModule([lifeconc,lifelogic], Nodes),
-	io:format("Modules loaded to all nodes~n"),
-	NodeKeyList = operateNodes(Nodes, lifeconc,testRemoteMethod,[okeeeej]),
-	io:format("All nodes operated~n"),
-	listen(NodeKeyList),
-  io:format("All nodes listened~n"),
-	{ok, done}.
+	io:format("Mam wszystkie ~B wezly~n", [length(Nodes)]),
+	loadModule(lifeconc, Nodes),
+  load_module(lifelogic, Nodes),
+	io:format("Moduly zaladowane~n"),
+  Nodes.
 
 
 %% @doc Metoda laduje podane moduly do wszystkich wezlow.
+%%      Z pomoca rpc:call na wszystkich wezlach ladowane sa
+%%      binarki modulow.
 -spec loadModule(modules(), nodes()) -> ok.
-loadModule(Modules, Nodes) ->
-  lists:map(fun(Module) ->
+loadModule(Module, Nodes) ->
     {_Mod, Bin, Filename} = code:get_object_code(Module),
-    lists:map(fun(Node) -> rpc:call(Node, code, load_binary, [Module, Filename, Bin]) end, Nodes)
-  end, Modules),
+    lists:map(fun(Node) -> rpc:call(Node, code, load_binary, [Module, Filename, Bin]) end, Nodes),
   ok.
 
 
-%% @doc Metoda tworzy asynchroniczne procesy.
-%%      Na kazdym wezle uruchamiana jest metoda M:F/A.
-%%      Metoda zwraca liste krotek w postaci
-%%      identyfikator_wezla:klucz_procesu
--spec operateNodes(nodes(), module(), func(), args()) -> [{node(), pkey()}].
-operateNodes(Nodes, M,F,A) ->
-	Result = lists:map(fun(Node) -> {Node, rpc:async_call(Node, lifeconc, operateNode, [Node, self(), {M,F,A}])} end, Nodes),
-	Result.
+%% @doc Metoda tworzy asynchroniczny proces.
+%%      Na wezle uruchamiana jest metoda operateNode, ktora
+%%      zwraca krotke {id_wezla:klucz_procesu}
+-spec createNode(node(),pid(),{module(),func(),args()}) -> {node(),pkey()}.
+createNode(Node,ParentPid,{M,F,A}) ->
+  io:format("Tworzenie async procesu~n"),
+  Key = rpc:async_call(Node, lifeconc, localTest, [Node, ParentPid]),
+  io:format("Stworzony asynchroniczny proces na "),
+  io:write({Node,Key}),
+  io:format("~n"),
+  {Node,Key}.
+
+localTest(Node, Pid) ->
+  Pid ! {ok, Node, lol},
+  ok.
+
+%% @doc Metoda wywolywana na zdalnym wezle.
+%%      Powoduje uruchomienie M:F/A, a po uzyskaniu wyniku
+%%      wysyla do swojego rodzica informacje, ze obliczenia zostaly
+%%      wykonane i zwraca wynik obliczen.
+-spec operateNode(node(),pid(),{module(),func(),args()}) -> any().
+operateNode(Node, ParentPid, {M,F,A}) ->
+  Res = erlang:apply(M, F, A),
+  ParentPid ! {ok, Node},
+  Res.
 
 
 %% @doc Metoda nasluchuje odpowiedzi od wezlow.
-%%      Gdy dostanie wiadomosc, wyswietla zwróconą przez
-%%      dany wezel wartosc.
--spec listen([{node(),pkey()}]) -> ok.
-listen(NodeKeyList) -> 
+%%      Gdy dostanie wiadomosc...
+gatherResult(_, 0) -> ok;
+gatherResult(NodeKeyList, NodesLeft) ->
 	receive
 		{ok, Node} ->
 			{_, Key} = lists:keyfind(Node, 1, NodeKeyList),
@@ -73,30 +86,20 @@ listen(NodeKeyList) ->
 			io:format("- Dostalem od ~s klucz ~p; wartosc: ", [Node, Key]),
 			io:write(RemoteResult),
 			io:format("~n"),
-			listen(NodeKeyList)
-	after 5000 ->
-			io:format("Timeout~n"),
+      gatherResult(NodeKeyList, NodesLeft-1)
+	after 15000 ->
+			io:format("Timeout 10 seconds~n"),
 			timeout
-	end.
+	end.%,
+  %RemoteResult.
 
-%% @doc Metoda wywolywana na zdalnym wezle.
--spec operateNode(node(),pid(),{module(),func(),args()}) -> any().
-operateNode(Node, ParentPid, {M,F,A}) ->
-	Res = erlang:apply(M, F, [self()]),
-	ParentPid ! {ok, Node},
-	Res.
 
-%testowa metoda dla operatoNode
-testRemoteMethod(Var) ->
-	timer:sleep(100),
-	{localPid, Var}.
-	
+
 %% @doc Metoda kontroluje process na wezle
 -spec columnProcess(bitstring(), integer(), integer(), pid()) -> ok.
 columnProcess(Column,ColumnWidth, Height, Supervisor) ->
 		lifelogic:next(Column, ColumnWidth+2, Height+2),
 		Supervisor ! ok.
-		
 	
 %% @doc Supervisor synchronizujacy processy
 -spec supervise(integer(),integer(),integer(),any()) -> {ok}.
@@ -104,7 +107,7 @@ supervise(ColumnCount, ColumnWidth, Height, Columns) ->
 	receive
 		start ->
 			Start = now(),
-			[spawn(lifeconc, columnProcess, [Column, ColumnWidth, Height, self()]) || Column <- Columns],
+			[spawn(conc, columnProcess, [Column, ColumnWidth, Height, self()]) || Column <- Columns],
 			synchronize(ColumnCount),
 			Stop = now(),
 			Diff = timer:now_diff(Stop, Start),
