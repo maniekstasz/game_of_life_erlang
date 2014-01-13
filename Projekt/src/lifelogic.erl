@@ -10,8 +10,11 @@
   getRightAsLeft/3,
   getBorders/5,
   setBorders/3,
-  next/3
-]).
+  next/3,
+  getInnerBoard/3,
+  glue/3,
+  split/3,
+  getBoardExtraTopAndBottom/2]).
 
 % === WAŻNE ===
 % Width, Height - rozmiary tablicy niepowiekszonej
@@ -38,7 +41,6 @@ createConstants(Width, Height) ->
 	<<Right:BigSize>> = <<0:1/unit:1, 0:Width/unit:1, 0:1/unit:1, PreRight:Size/unit:1,0:1/unit:1, 0:Width/unit:1, 0:1/unit:1 >>,
 	{InnerBoard, Left, Right, Zero}.
 
-
 %% @doc Metoda przygotowujaca lewa krawedz sasiada.
 %%      Pobiera lewa krawedz boarda i zwraca ja
 %%      jako prawa
@@ -53,6 +55,19 @@ getLeftAsRight(Board, LeftConstant, Width) ->
 -spec getRightAsLeft(integer(), integer(), integer()) -> integer().
 getRightAsLeft(Board, RightConstant, Width) ->
 	Board band RightConstant bsl Width.
+
+
+split(ColumnsCount, Width, Board) ->
+  ColumnWidth = Width div ColumnsCount,
+	split(Board,ColumnWidth, Width, 0, []).
+
+split(Board, ColumnWidth, Width, Offset, Acc)->
+	Rest = Width - Offset - ColumnWidth,
+	case Offset =:= Width of
+		true -> Acc;
+		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
+	end.
+
 
 
 %% @doc Metoda przygotowujaca krawedzie.
@@ -78,8 +93,7 @@ setBorders(InnerConstant, BigSize, {LeftBorder, Board, RightBorder}) ->
 
 %% @doc Metoda skleja kolumny do siebie
 -spec glue(bitstring(), integer(), integer()) -> bitstring().
-glue(Boards, Width, Height) ->
-	glue(Boards,Width, Height,0, <<0:0>>).
+glue(Boards, Width, Height) -> glue(Boards,Width, Height,0, <<0:0>>).
 glue(Boards, Width,Height,Offset, Acc) ->
 	RestSize = Width*Height - Width - Offset,
 	D =  [<< <<B:Width>> || <<_:Offset, B:Width,_:RestSize>> <= A >> ||  A <- Boards],
@@ -101,8 +115,8 @@ getInnerBoard(Board,BigWidth, BigHeight) ->
 	<< <<Line:BoardSize2>> || <<_:1, Line:BoardSize2, _:1>> <= SmallerBoard >>.
 
 %Dostaje zwykla tablice i dorzuca do niej zera na gorze i na dole
-%getBoardExtraTopAndBottom(Board, Width) ->
-%	<<0:Width, Board/bits, 0:Width>>.
+getBoardExtraTopAndBottom(Board, Width) ->
+	<<0:Width, Board/bits, 0:Width>>.
 
 %% @doc Metoda wykonuje iteracje planszy wg reguly Conway'a.
 %%      Board musi byc podany jako bitstring
