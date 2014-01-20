@@ -122,3 +122,20 @@ synchronize(Counter) ->
 		false -> {ok}
 		end
 	end. 
+
+nodeSynchronize() ->
+	
+
+nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, LeftConstant, RightConstant, ParentNode) ->
+	receive
+		next -> 
+			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount),
+			[First | _] = NewColumns,
+			Last = lists:last(NewColumns),
+			LeftBorder = lifelogic:getLeftAsRight(First, LeftConstant, ColumnWidth),
+			RightBoder = lifelogic:getRightAsLeft(Last, RightConstant, ColumnWidth),
+			{nodeSynchronizer, ParentNode} ! {LeftBorder, RightBoder},
+			nodeSupervise(NewColumns, ColumnWidth, Height, ColumnsCount, LeftConstant, RightConstant, ParentNode);
+		finish ->
+			{nodeSynchronizer, ParentNode} ! Columns
+	end.

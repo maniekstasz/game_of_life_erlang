@@ -5,7 +5,7 @@
 -export([calculateSingleColumn/3]).
 -export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2,test/0]).
 
--export([iterateLocal/3]).
+-export([iterateLocal/4]).
 
 -type board() :: bitstring().
 -type column() :: bitstring().
@@ -141,14 +141,19 @@ testTimeLocal(Count, IterationsNumber) ->
 %%      Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
 %%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec iterateLocal(columns(), integer(), integer()) -> columns().
-iterateLocal(Columns, _, 0) -> Columns;
-iterateLocal(Columns, BoardSize, IterationCounter) ->
-  ColumnsCount = length(Columns),
-  ColumnWidth = BoardSize div ColumnsCount,
-  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
-  Result = rpc:pmap({lifemain,calculateSingleColumn},[BoardSize,ColumnWidth],ColumnTuples),
-  iterateLocal(Result, BoardSize, IterationCounter-1).
+-spec iterateLocal(columns(), integer(), integer(), integer()) -> columns().
+%iterateLocal(Columns, _, 0) -> Columns;
+%iterateLocal(Columns, BoardSize, IterationCounter) ->
+ % ColumnsCount = length(Columns),
+% % ColumnWidth = BoardSize div ColumnsCount,
+%  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
+%  Result = rpc:pmap({lifemain,calculateSingleColumn},[BoardSize,ColumnWidth],ColumnTuples),
+ % iterateLocal(Result, BoardSize, IterationCounter-1).
+%
+
+iterateLocal(Columns,ColumnWidth,Height, ColumnsCount) ->
+  ColumnTuples = prepareColumnTuples(Columns, Height),
+  rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth],ColumnTuples).
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
