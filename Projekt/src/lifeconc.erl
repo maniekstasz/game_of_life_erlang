@@ -143,8 +143,8 @@ nodeNext(NodeBorderTuples, Iteration, Zero) ->
  	FinalColumnTuples = lists:map(fun(NodeTriplet) ->
     lifemain:columnTripleToTuple(NodeTriplet, Zero, Zero) end,
     NodeTriplets),
- 	lists:foreach(fun({LeftBorder, {_, Node, NodeProcess}, RightBorder}) ->
-				NodeProcess ! {self(), LeftBorder, RightBorder} end,
+ 	lists:foreach(fun({LeftAsRight, {_, Node, NodeProcess}, RightAsLeft}) ->
+				NodeProcess ! {self(), RightAsLeft, LeftAsRight} end,
 				 FinalColumnTuples),
 	nodeListener(length(NodeBorderTuples),Zero,Iteration, []).
 	
@@ -152,21 +152,22 @@ nodeNext(NodeBorderTuples, Iteration, Zero) ->
 nodeListener(0, _, -1, Acc)->
 	Acc;
 nodeListener(0,Zero,Iteration, Acc)->
-	SortedNodeBorderTuples = lists:sort(fun({_,{NodeNumberA, _,_},_},{_,{NodeNumberB, _,_},_})-> NodeNumberA >= NodeNumberB end, Acc),
-	io:format("Posortowałem~n", []),
+	SortedNodeBorderTuples = lists:sort(fun({_,{NodeNumberA, _,_},_},{_,{NodeNumberB, _,_},_})-> NodeNumberA =< NodeNumberB end, Acc),
 	nodeNext(SortedNodeBorderTuples, Iteration-1, Zero)	;
 
 nodeListener(N,Zero, Iteration, Acc) ->
 	receive
-		{finish, Columns, NodeNumber} -> nodeListener(N-1, Zero, Iteration, [{Columns, NodeNumber}]++Acc);
+		{finish, Columns, NodeNumber} ->
+			%lists:foreach(fun(Column) -> io:format("~p~n", [NodeNumber]), lifeio:writeBoard(Column, 4,18),io:format("~n",[]) end , Columns),
+			nodeListener(N-1, Zero, Iteration, [{Columns, NodeNumber}]++Acc);
+		
 		NodeIterResult -> 
-		io:format("Przyjąłem~n", []),
 		nodeListener(N-1,Zero, Iteration, [NodeIterResult] ++ Acc)
 		
 	end.
 
 initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants) ->
-	Nodes = nodes(),
+	Nodes = net_adm:world(),
 	
 	NodesCount = length(Nodes),
 	io:format("Wczytalismy~n", []),
@@ -175,10 +176,13 @@ initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants
 	
 	{_,LeftConstant, RightConstant,_} = Constants,
 	lists:map(fun(Node) ->
-		NodeNumber = lifemain:indexOf(Node,Nodes),
-	    NodeColumns = lists:sublist(Columns,NodeNumber , ColumnsPerNode),
+		NodeNumber = lifemain:indexOf(Node,Nodes)-1,
+		case NodeNumber of
+	    0 -> NodeColumns = lists:sublist(Columns,1 , ColumnsPerNode);
+	    _ -> NodeColumns = lists:sublist(Columns,NodeNumber*ColumnsPerNode +1, ColumnsPerNode)
+	    end,
 		NodeProcess = spawn(Node, lifeconc, nodeSupervise, [NodeColumns, ColumnWidth, Height, length(NodeColumns),Constants, node(), NodeNumber]),
-		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth+2, (ColumnWidth+2)*(Height+2) )
+		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2) )
 	    end,
     Nodes).
 
@@ -186,31 +190,30 @@ initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants
 
 						
 mainController(Columns, ColumnWidth, Height, ColumnsCount,Iteration) ->
-	net_adm:ping('l1@szymon-PC'),
-	net_adm:ping('l2@szymon-PC'),
 	Constants = lifelogic:createConstants(ColumnWidth, Height),
 	{_,_,_,Zero} = Constants,
 	NodeBorderTuples = initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants),
-	io:format("Zainicjowaliśmy supervisory~n", []),
+	Begin = now(),
 	Acc = nodeNext(NodeBorderTuples, Iteration, Zero),
+	End = now(),
+	io:format("~p~n", [timer:now_diff(End, Begin)]),
 	Sorted = lists:sort(fun({_,NodeNumberA},{_,NodeNumberB})-> NodeNumberA >= NodeNumberB end, Acc),
 	Result = lists:foldl(fun({Columns, _}, Acc) ->  Columns ++ Acc end, [], Sorted),
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, Height+2) end, Result),
 	Glued = lifelogic:glue(Inners, ColumnWidth, Height),
-	lifeio:writeBoard(Glued, Height,Height),
+	%lifeio:writeBoard(Glued, Height,Height),
 	lifeio:writeBoardToFile(Glued, Height).
 	
 	
 
 nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, ParentNode, NodeNumber) ->
 	receive
-		{Listener, LeftBorder, RightBorder} -> 
-			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount,LeftBorder, RightBorder, LeftConstant, RightConstant),
-			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth+2, (ColumnWidth+2)*(Height+2)),
-		io:format("Obliczone~n", []),
+		{Listener, RightAsRight, LeftAsRight} -> 
+			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant),
+			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2)),
+		
 			Listener ! NodeBordersTuple,
 			nodeSupervise(NewColumns, ColumnWidth, Height, ColumnsCount, {InnerConstant,LeftConstant, RightConstant,Zero}, ParentNode, NodeNumber);
 		{finish, Listener} ->
-			io:format("Koniec ~n",[]),
 			Listener ! {finish, Columns, NodeNumber}
 	end.

@@ -150,9 +150,10 @@ testTimeLocal(Count, IterationsNumber) ->
  % iterateLocal(Result, BoardSize, IterationCounter-1).
 %
 
-iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftBorder, RightBorder, LeftConstant, RightConstant) ->
-  ColumnTuples = prepareColumnTuples(Columns,ColumnWidth, Height,LeftBorder, RightBorder,LeftConstant, RightConstant),
-  rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth],ColumnTuples).
+iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant) ->
+  ColumnTuples = prepareColumnTuples(Columns,ColumnWidth, Height,LeftAsRight, RightAsRight,LeftConstant, RightConstant),
+  %lists:foreach(fun(ColumnTuple) -> ColumnWithBorders = calculateSingleColumn(ColumnTuple, Height, ColumnWidth), lifeio:writeBoard(ColumnWithBorders, 2+2, 8+2), io:format("~n") end,ColumnTuples ).
+ rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth],ColumnTuples).
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -164,6 +165,7 @@ iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftBorder, RightBorder, 
 calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth) ->
   {InnerBoardConst,_,_,_} = lifelogic:createConstants(ColumnWidth, BoardSize),
   ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
+
   ColumnWithBorders = lifelogic:setBorders(InnerBoardConst, ExtendedColumnSize, ColumnTuple),
   Next = lifelogic:next(ColumnWithBorders, ColumnWidth+2, BoardSize+2),
   %Inner = lifelogic:getInnerBoard(Next, ColumnWidth+2, BoardSize+2),
@@ -177,14 +179,14 @@ calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth) ->
 %%      w rozproszeniu.
 %% ---------------------------------------------------------------------------------------------------------------------
 -spec prepareColumnTuples(columns(), integer(),integer(), bitstring(), bitstring(), integer(), integer()) -> columnTuples().
-prepareColumnTuples(Columns,ColumnWidth, BoardSize, LeftBorder, RightBorder, LeftConstant, RightConstant) ->
+prepareColumnTuples(Columns,ColumnWidth, BoardSize, LeftAsRight, RightAsRight, LeftConstant, RightConstant) ->
   %ColumnWidth = BoardSize div length(Columns),
   ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
 %  {_, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
   BorderTuples = lists:map(fun(Column) -> lifelogic:getBorders(Column, LeftConstant, RightConstant, ColumnWidth, ExtendedColumnSize) end, Columns),
   ColumnTriplets = borderTuplesToColumnTriples(BorderTuples),
   FinalColumnTuples = lists:map(fun(ColumnTriple) ->
-    columnTripleToTuple(ColumnTriple, LeftBorder, RightBorder) end,
+    columnTripleToTuple(ColumnTriple, LeftAsRight, RightAsRight) end,
     ColumnTriplets),
   FinalColumnTuples.
 
@@ -210,15 +212,15 @@ borderTuplesToColumnTriples(BorderTuples) ->
 %%%     kolumna). Metoda jest jednym z etapow tworzenia krotek kolumn - wygodnych do przetwarzania struktur.
 %% ---------------------------------------------------------------------------------------------------------------------
 -spec columnTripleToTuple(columnTriple(), bitstring(), bitstring()) -> columnTuple().
-columnTripleToTuple(ColumnTriple, LeftBorder, RightBorder) ->
+columnTripleToTuple(ColumnTriple, LeftAsRightV, RightAsRightV) ->
   {PrevCol,CurrCol,NextCol} = ColumnTriple,
   case PrevCol of
-    blankstart -> RightAsLeft = LeftBorder;
+    blankstart -> RightAsLeft = LeftAsRightV;
     _ -> {_,_,RightAsLeft} = PrevCol
   end,
   {_,Col,_} = CurrCol,
   case NextCol of
-    blankend -> LeftAsRight = RightBorder;
+    blankend -> LeftAsRight = RightAsRightV;
     _ -> {LeftAsRight,_,_} = NextCol
   end,
   {RightAsLeft,Col,LeftAsRight}.
