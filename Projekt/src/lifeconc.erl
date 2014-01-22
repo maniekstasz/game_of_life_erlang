@@ -12,7 +12,9 @@
   columnProcess/4,
   supervise/4,
   synchronize/1,
-  createNode/3
+  createNode/3,
+  mainController/5,
+  nodeSupervise/7
 ]).
 
 
@@ -123,19 +125,92 @@ synchronize(Counter) ->
 		end
 	end. 
 
-nodeSynchronize() ->
+getNodeBorders([F | Rest], NodeTuple, LeftConstant, RightConstant, ColumnWidth, BigSize) ->
+	<<First:BigSize>> = F,
+	<<Last:BigSize>> = lists:last(Rest),
+	LeftBorder = lifelogic:getLeftAsRight(First, LeftConstant, ColumnWidth),
+	RightBorder = lifelogic:getRightAsLeft(Last, RightConstant, ColumnWidth),
+	{LeftBorder, NodeTuple, RightBorder}.
+	
+nodeNext(NodeBorderTuples, 0, Zero) ->
+	lists:foreach(fun({_, {_, Node, NodeProcess}, _}) ->
+				NodeProcess ! {finish, self()} end, NodeBorderTuples),
+	nodeListener(length(NodeBorderTuples),  Zero,-1,[]);
+
+nodeNext(NodeBorderTuples, Iteration, Zero) ->
+	%Listener = spawn(lifeconc, nodeListener, [length(NodeBorderTuples),Zero, []]),
+  	NodeTriplets = lifemain:borderTuplesToColumnTriples(NodeBorderTuples),
+ 	FinalColumnTuples = lists:map(fun(NodeTriplet) ->
+    lifemain:columnTripleToTuple(NodeTriplet, Zero, Zero) end,
+    NodeTriplets),
+ 	lists:foreach(fun({LeftBorder, {_, Node, NodeProcess}, RightBorder}) ->
+				NodeProcess ! {self(), LeftBorder, RightBorder} end,
+				 FinalColumnTuples),
+	nodeListener(length(NodeBorderTuples),Zero,Iteration, []).
 	
 
-nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, LeftConstant, RightConstant, ParentNode) ->
+nodeListener(0, _, -1, Acc)->
+	Acc;
+nodeListener(0,Zero,Iteration, Acc)->
+	SortedNodeBorderTuples = lists:sort(fun({_,{NodeNumberA, _,_},_},{_,{NodeNumberB, _,_},_})-> NodeNumberA >= NodeNumberB end, Acc),
+	io:format("Posortowałem~n", []),
+	nodeNext(SortedNodeBorderTuples, Iteration-1, Zero)	;
+
+nodeListener(N,Zero, Iteration, Acc) ->
 	receive
-		next -> 
-			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount),
-			[First | _] = NewColumns,
-			Last = lists:last(NewColumns),
-			LeftBorder = lifelogic:getLeftAsRight(First, LeftConstant, ColumnWidth),
-			RightBoder = lifelogic:getRightAsLeft(Last, RightConstant, ColumnWidth),
-			{nodeSynchronizer, ParentNode} ! {LeftBorder, RightBoder},
-			nodeSupervise(NewColumns, ColumnWidth, Height, ColumnsCount, LeftConstant, RightConstant, ParentNode);
-		finish ->
-			{nodeSynchronizer, ParentNode} ! Columns
+		{finish, Columns, NodeNumber} -> nodeListener(N-1, Zero, Iteration, [{Columns, NodeNumber}]++Acc);
+		NodeIterResult -> 
+		io:format("Przyjąłem~n", []),
+		nodeListener(N-1,Zero, Iteration, [NodeIterResult] ++ Acc)
+		
+	end.
+
+initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants) ->
+	Nodes = nodes(),
+	
+	NodesCount = length(Nodes),
+	io:format("Wczytalismy~n", []),
+	ColumnsPerNode = ColumnsCount div NodesCount,
+	%ColumnsRest = ColumnsCount - ColumnsPerNode * NodesCount,
+	
+	{_,LeftConstant, RightConstant,_} = Constants,
+	lists:map(fun(Node) ->
+		NodeNumber = lifemain:indexOf(Node,Nodes),
+	    NodeColumns = lists:sublist(Columns,NodeNumber , ColumnsPerNode),
+		NodeProcess = spawn(Node, lifeconc, nodeSupervise, [NodeColumns, ColumnWidth, Height, length(NodeColumns),Constants, node(), NodeNumber]),
+		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth+2, (ColumnWidth+2)*(Height+2) )
+	    end,
+    Nodes).
+
+			
+
+						
+mainController(Columns, ColumnWidth, Height, ColumnsCount,Iteration) ->
+	net_adm:ping('l1@szymon-PC'),
+	net_adm:ping('l2@szymon-PC'),
+	Constants = lifelogic:createConstants(ColumnWidth, Height),
+	{_,_,_,Zero} = Constants,
+	NodeBorderTuples = initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants),
+	io:format("Zainicjowaliśmy supervisory~n", []),
+	Acc = nodeNext(NodeBorderTuples, Iteration, Zero),
+	Sorted = lists:sort(fun({_,NodeNumberA},{_,NodeNumberB})-> NodeNumberA >= NodeNumberB end, Acc),
+	Result = lists:foldl(fun({Columns, _}, Acc) ->  Columns ++ Acc end, [], Sorted),
+	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, Height+2) end, Result),
+	Glued = lifelogic:glue(Inners, ColumnWidth, Height),
+	lifeio:writeBoard(Glued, Height,Height),
+	lifeio:writeBoardToFile(Glued, Height).
+	
+	
+
+nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, ParentNode, NodeNumber) ->
+	receive
+		{Listener, LeftBorder, RightBorder} -> 
+			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount,LeftBorder, RightBorder, LeftConstant, RightConstant),
+			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth+2, (ColumnWidth+2)*(Height+2)),
+		io:format("Obliczone~n", []),
+			Listener ! NodeBordersTuple,
+			nodeSupervise(NewColumns, ColumnWidth, Height, ColumnsCount, {InnerConstant,LeftConstant, RightConstant,Zero}, ParentNode, NodeNumber);
+		{finish, Listener} ->
+			io:format("Koniec ~n",[]),
+			Listener ! {finish, Columns, NodeNumber}
 	end.

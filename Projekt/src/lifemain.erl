@@ -3,9 +3,9 @@
 -export([testTimeLocal/0,testTimeLocal/2]).
 
 -export([calculateSingleColumn/3]).
--export([prepareColumnTuples/2,borderTuplesToColumnTriples/1,columnTripleToTuple/2,test/0]).
+-export([prepareColumnTuples/7,borderTuplesToColumnTriples/1,columnTripleToTuple/3,test/2, testRemote/2, indexOf/2]).
 
--export([iterateLocal/4]).
+-export([iterateLocal/8]).
 
 -type board() :: bitstring().
 -type column() :: bitstring().
@@ -22,25 +22,24 @@
 
 
 
-test() ->
-	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', 4),
-	ColumnWidth = BoardSize div 4,
-	NewColumns = lifemain:iterateLocal(Columns, BoardSize, 4),
+testRemote(ColumnsCount,Iteration) ->
+	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', ColumnsCount),
+	ColumnWidth = BoardSize div ColumnsCount,
+	lifeconc:mainController(Columns, ColumnWidth, BoardSize, ColumnsCount, Iteration).
+	%NewColumns = lifemain:iterateLocal(Columns, BoardSize, 4),
+	%Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, NewColumns),
+	%Glued = lifelogic:glue(Inners, ColumnWidth, BoardSize),
+	%Data = lifeio:writeBoardToFile(Glued, BoardSize).
+
+test(ColumnsCount,Iteration) ->
+	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', ColumnsCount),
+	ColumnWidth = BoardSize div ColumnsCount,
+	{InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
+  NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,BoardSize, ColumnsCount,Zero, Zero, LeftConstant, RightConstant),
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, NewColumns),
 	Glued = lifelogic:glue(Inners, ColumnWidth, BoardSize),
-	Data = lifeio:writeBoardToFile(Glued, BoardSize).
-
-testRemote(Nodes, NumberOfProcesses) ->
-  %Nodes = [],
-  %Nodes = lifeconc:prepareNodes(),
-  {BoardSize, Board} = lifemain:loadWholeBoard('/fff.gz'),
-  %lifeio:writeBoard(Board, BoardSize, BoardSize),
-  io:format("Start~n"),
-  %FinalBoard = iterate(Board, BoardSize, Nodes, 1, 1),
-  %countTimeForData(Board, BoardSize, Nodes, 128, 1),
-  io:format("Stop~n").%,
-%lifeio:writeBoard(FinalBoard, BoardSize, BoardSize).
-
+	Data = lifeio:writeBoard(Glued, BoardSize, BoardSize),
+	lifeio:writeBoardToFile(Glued, BoardSize).
 
 
 
@@ -58,7 +57,7 @@ iterate(Columns, BoardSize, Nodes, ProcessCount, IterationCounter) ->
   ColumnsCount = length(Columns),
   ColumnWidth = BoardSize div ColumnsCount,
 
-  ColumnTuples = prepareColumnTuples(Columns, BoardSize),
+  %ColumnTuples = prepareColumnTuples(Columns, BoardSize),
   %io:format("board podzielony na ~B kolumn~n", [ColumnsCount]),
 
   %NodeKeyList = lists:map(fun(X) ->
@@ -141,7 +140,7 @@ testTimeLocal(Count, IterationsNumber) ->
 %%      Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
 %%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec iterateLocal(columns(), integer(), integer(), integer()) -> columns().
+-spec iterateLocal(columns(), integer(), integer(), integer(), bitstring(), bitstring(), integer(), integer()) -> columns().
 %iterateLocal(Columns, _, 0) -> Columns;
 %iterateLocal(Columns, BoardSize, IterationCounter) ->
  % ColumnsCount = length(Columns),
@@ -151,8 +150,8 @@ testTimeLocal(Count, IterationsNumber) ->
  % iterateLocal(Result, BoardSize, IterationCounter-1).
 %
 
-iterateLocal(Columns,ColumnWidth,Height, ColumnsCount) ->
-  ColumnTuples = prepareColumnTuples(Columns, Height),
+iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftBorder, RightBorder, LeftConstant, RightConstant) ->
+  ColumnTuples = prepareColumnTuples(Columns,ColumnWidth, Height,LeftBorder, RightBorder,LeftConstant, RightConstant),
   rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth],ColumnTuples).
 
 
@@ -177,15 +176,15 @@ calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth) ->
 %%      jesli ostatnia kolumna)}. Takie struktury danych umozliwiaja niezalezne przeliczanie poszczegolnych kolumn
 %%      w rozproszeniu.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec prepareColumnTuples(columns(), integer()) -> columnTuples().
-prepareColumnTuples(Columns, BoardSize) ->
-  ColumnWidth = BoardSize div length(Columns),
+-spec prepareColumnTuples(columns(), integer(),integer(), bitstring(), bitstring(), integer(), integer()) -> columnTuples().
+prepareColumnTuples(Columns,ColumnWidth, BoardSize, LeftBorder, RightBorder, LeftConstant, RightConstant) ->
+  %ColumnWidth = BoardSize div length(Columns),
   ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
-  {_, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
-  BorderTuples = lists:map(fun(Column) -> lifelogic:getBorders(Column, Left, Right, ColumnWidth, ExtendedColumnSize) end, Columns),
+%  {_, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
+  BorderTuples = lists:map(fun(Column) -> lifelogic:getBorders(Column, LeftConstant, RightConstant, ColumnWidth, ExtendedColumnSize) end, Columns),
   ColumnTriplets = borderTuplesToColumnTriples(BorderTuples),
   FinalColumnTuples = lists:map(fun(ColumnTriple) ->
-    columnTripleToTuple(ColumnTriple, Zero) end,
+    columnTripleToTuple(ColumnTriple, LeftBorder, RightBorder) end,
     ColumnTriplets),
   FinalColumnTuples.
 
@@ -210,16 +209,16 @@ borderTuplesToColumnTriples(BorderTuples) ->
 %%      (lub zera, jesli pierwsza kolumna), dana kolumne, lewa krawedz nastepnej kolumny (lub zera, jesli ostatnia
 %%%     kolumna). Metoda jest jednym z etapow tworzenia krotek kolumn - wygodnych do przetwarzania struktur.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec columnTripleToTuple(columnTriple(), bitstring()) -> columnTuple().
-columnTripleToTuple(ColumnTriple, Zero) ->
+-spec columnTripleToTuple(columnTriple(), bitstring(), bitstring()) -> columnTuple().
+columnTripleToTuple(ColumnTriple, LeftBorder, RightBorder) ->
   {PrevCol,CurrCol,NextCol} = ColumnTriple,
   case PrevCol of
-    blankstart -> RightAsLeft = Zero;
+    blankstart -> RightAsLeft = LeftBorder;
     _ -> {_,_,RightAsLeft} = PrevCol
   end,
   {_,Col,_} = CurrCol,
   case NextCol of
-    blankend -> LeftAsRight = Zero;
+    blankend -> LeftAsRight = RightBorder;
     _ -> {LeftAsRight,_,_} = NextCol
   end,
   {RightAsLeft,Col,LeftAsRight}.
