@@ -125,9 +125,9 @@ synchronize(Counter) ->
 		end
 	end. 
 
-getNodeBorders([F | Rest], NodeTuple, LeftConstant, RightConstant, ColumnWidth, BigSize) ->
-	<<First:BigSize>> = F,
-	<<Last:BigSize>> = lists:last(Rest),
+getNodeBorders(Columns, NodeTuple, LeftConstant, RightConstant, ColumnWidth, BigSize) ->
+	[First| _] = Columns,
+	Last = lists:last(Columns),
 	LeftBorder = lifelogic:getLeftAsRight(First, LeftConstant, ColumnWidth),
 	RightBorder = lifelogic:getRightAsLeft(Last, RightConstant, ColumnWidth),
 	{LeftBorder, NodeTuple, RightBorder}.
