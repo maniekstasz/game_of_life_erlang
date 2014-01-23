@@ -122,7 +122,8 @@ initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Co
 		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2) )
 	    end,
     Nodes),
-	io:format("Dane przeslane ~n", []).
+	io:format("Dane przeslane ~n", []),
+	NodeTuples.
 
 
 callFinishOnNodes(NodeTuples) -> 
