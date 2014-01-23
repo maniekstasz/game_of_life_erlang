@@ -72,8 +72,12 @@ readDataToColumns(FileName, ColumnsCount) ->
   {ok,Dir} = file:get_cwd(),
 	{FD,Pow} = lifeRead(Dir ++ FileName),
 	BoardSize = trunc(math:pow(2, Pow)),
-	Boards = readParts(FD, BoardSize*BoardSize, BoardSize,ColumnsCount),
-	{BoardSize, Boards}.
+  	Size = BoardSize*BoardSize,
+  	ColumnWidth = BoardSize div ColumnsCount,
+  	ColumnBigSize = (ColumnWidth + 2) * (BoardSize + 2),
+	Boards = readParts(FD, Size, BoardSize,ColumnsCount),
+  	BoardsAsIntegers = lists:map(fun(Board) -> <<AsInteger:ColumnBigSize>> = Board, AsInteger end, Boards),
+	{BoardSize, BoardsAsIntegers}.
 
 %prepareBoardToWrite(0, _, Data) ->Data;
 %prepareBoardToWrite(BoardSize, Board, Data) ->

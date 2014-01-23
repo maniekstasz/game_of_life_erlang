@@ -2,10 +2,10 @@
 
 -export([testTimeLocal/0,testTimeLocal/2]).
 
--export([calculateSingleColumn/3]).
+-export([calculateSingleColumn/4]).
 -export([prepareColumnTuples/7,borderTuplesToColumnTriples/1,columnTripleToTuple/3,test/2, testRemote/2, indexOf/2]).
 
--export([iterateLocal/8]).
+-export([iterateLocal/9]).
 
 -type board() :: bitstring().
 -type column() :: bitstring().
@@ -35,10 +35,12 @@ test(ColumnsCount,Iteration) ->
 	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', ColumnsCount),
 	ColumnWidth = BoardSize div ColumnsCount,
 	{InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
-  NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,BoardSize, ColumnsCount,Zero, Zero, LeftConstant, RightConstant),
+	Begin = now(),
+ 	NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,BoardSize, ColumnsCount,Zero, Zero, LeftConstant, RightConstant,InnerConstant),
+	io:format("~p~n", [timer:now_diff(now(), Begin)]),
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, BoardSize+2) end, NewColumns),
 	Glued = lifelogic:glue(Inners, ColumnWidth, BoardSize),
-	Data = lifeio:writeBoard(Glued, BoardSize, BoardSize),
+	%Data = lifeio:writeBoard(Glued, BoardSize, BoardSize),
 	lifeio:writeBoardToFile(Glued, BoardSize).
 
 
@@ -140,7 +142,7 @@ testTimeLocal(Count, IterationsNumber) ->
 %%      Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
 %%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec iterateLocal(columns(), integer(), integer(), integer(), bitstring(), bitstring(), integer(), integer()) -> columns().
+-spec iterateLocal(columns(), integer(), integer(), integer(), bitstring(), bitstring(), integer(), integer(), integer()) -> columns().
 %iterateLocal(Columns, _, 0) -> Columns;
 %iterateLocal(Columns, BoardSize, IterationCounter) ->
  % ColumnsCount = length(Columns),
@@ -150,10 +152,10 @@ testTimeLocal(Count, IterationsNumber) ->
  % iterateLocal(Result, BoardSize, IterationCounter-1).
 %
 
-iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant) ->
+iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst) ->
   ColumnTuples = prepareColumnTuples(Columns,ColumnWidth, Height,LeftAsRight, RightAsRight,LeftConstant, RightConstant),
   %lists:foreach(fun(ColumnTuple) -> ColumnWithBorders = calculateSingleColumn(ColumnTuple, Height, ColumnWidth), lifeio:writeBoard(ColumnWithBorders, 2+2, 8+2), io:format("~n") end,ColumnTuples ).
- rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth],ColumnTuples).
+ rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth, InnerBoardConst],ColumnTuples).
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -161,11 +163,10 @@ iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight
 %%      o krawedzie poprzedniej i nastepnej kolumny, przeliczane sa stany wszystkich komorek kolumny, a nastepnie
 %%      kolumna jest obcinana ze zbednych elementow i zwracana.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec calculateSingleColumn(columnTuple(), integer(), integer()) -> column().
-calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth) ->
-  {InnerBoardConst,_,_,_} = lifelogic:createConstants(ColumnWidth, BoardSize),
+-spec calculateSingleColumn(columnTuple(), integer(), integer(), integer()) -> column().
+calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth, InnerBoardConst) ->
+  %{InnerBoardConst,_,_,_} = lifelogic:createConstants(ColumnWidth, BoardSize),
   ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
-
   ColumnWithBorders = lifelogic:setBorders(InnerBoardConst, ExtendedColumnSize, ColumnTuple),
   Next = lifelogic:next(ColumnWithBorders, ColumnWidth+2, BoardSize+2),
   %Inner = lifelogic:getInnerBoard(Next, ColumnWidth+2, BoardSize+2),

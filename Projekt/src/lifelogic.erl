@@ -77,8 +77,7 @@ split(Board, ColumnWidth, Width, Offset, Acc)->
 %%      Co ważne fukcja zwraca Integery nie bitstringi
 -spec getBorders(bitstring(), integer(), integer(), integer(), integer()) -> {integer(), bitstring(), integer()}.
 getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
-	<<BoardAsInteger:BigSize>> = Board,
-	{getLeftAsRight(BoardAsInteger, LeftConstant, Width), Board, getRightAsLeft(BoardAsInteger, RightConstant, Width)}.
+	{getLeftAsRight(Board, LeftConstant, Width), Board, getRightAsLeft(Board, RightConstant, Width)}.
 
 
 %% @doc Metoda ustawia krawedzie.
@@ -87,9 +86,7 @@ getBorders(Board, LeftConstant, RightConstant, Width, BigSize) ->
 %%      RightBorder analogicznie
 -spec setBorders(integer(), integer(), {integer(), bitstring(), integer()}) -> bitstring().
 setBorders(InnerConstant, BigSize, {LeftBorder, Board, RightBorder}) ->
-	<<BoardAsInteger:BigSize>> = Board,
-	Result = BoardAsInteger band InnerConstant bor LeftBorder bor RightBorder,
-	<<Result:BigSize>>.
+	Board band InnerConstant bor LeftBorder bor RightBorder.
 
 
 %% @doc Metoda skleja kolumny do siebie
@@ -109,7 +106,9 @@ glue(Boards, Width,Height,Offset, Acc) ->
 
 %% @doc Metoda zwraca tablice bez krawedzi
 -spec getInnerBoard(bitstring(),integer(),integer()) -> bitstring().
-getInnerBoard(Board,BigWidth, BigHeight) ->
+getInnerBoard(BoardAsInteger,BigWidth, BigHeight) ->
+	BigSize = BigWidth * BigHeight,
+	Board = <<BoardAsInteger:BigSize>>,
 	SmallerBoardSize = (BigWidth)*(BigHeight-2),
 	<<_:BigWidth, SmallerBoard:SmallerBoardSize/bits, _:BigWidth>> = Board,
 	BoardSize2 = BigWidth - 2,
@@ -123,9 +122,7 @@ getBoardExtraTopAndBottom(Board, Width) ->
 %%      Board musi byc podany jako bitstring
 %%      Zwraca nastepny stan tablicy
 -spec next(bitstring(),integer(),integer()) -> bitstring().
-next(BoardBitString, BigWidth, BigHeight) ->
-	Size = BigWidth*BigHeight,
-	<<Board:Size>> = BoardBitString,
+next(Board, BigWidth, BigHeight) ->
 	Neigh = [Board bsl 1,
 		Board bsl 1 bsl BigWidth,
 		Board bsl BigWidth,
@@ -143,8 +140,7 @@ next(BoardBitString, BigWidth, BigHeight) ->
 
 	[FS3, FS2| Rest] = sum(Tail, [0, S2,S1,S0]),
 
-	IntegerBoard = (bnot Board band FS3) bor (Board band FS3) bor (Board band FS2),
-	<<IntegerBoard:Size>>.
+	(bnot Board band FS3) bor (Board band FS3) bor (Board band FS2).
 
 
 %% @doc Metoda wylicza liczbe sasiadow

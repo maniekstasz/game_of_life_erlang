@@ -133,9 +133,7 @@ getNodeBorders([F | Rest], NodeTuple, LeftConstant, RightConstant, ColumnWidth, 
 	{LeftBorder, NodeTuple, RightBorder}.
 	
 nodeNext(NodeBorderTuples, 0, Zero) ->
-	lists:foreach(fun({_, {_, Node, NodeProcess}, _}) ->
-				NodeProcess ! {finish, self()} end, NodeBorderTuples),
-	nodeListener(length(NodeBorderTuples),  Zero,-1,[]);
+	NodeBorderTuples;
 
 nodeNext(NodeBorderTuples, Iteration, Zero) ->
 	%Listener = spawn(lifeconc, nodeListener, [length(NodeBorderTuples),Zero, []]),
@@ -143,7 +141,7 @@ nodeNext(NodeBorderTuples, Iteration, Zero) ->
  	FinalColumnTuples = lists:map(fun(NodeTriplet) ->
     lifemain:columnTripleToTuple(NodeTriplet, Zero, Zero) end,
     NodeTriplets),
- 	lists:foreach(fun({LeftAsRight, {_, Node, NodeProcess}, RightAsLeft}) ->
+ 	lists:foreach(fun({LeftAsRight, {_, _, NodeProcess}, RightAsLeft}) ->
 				NodeProcess ! {self(), RightAsLeft, LeftAsRight} end,
 				 FinalColumnTuples),
 	nodeListener(length(NodeBorderTuples),Zero,Iteration, []).
@@ -160,7 +158,6 @@ nodeListener(N,Zero, Iteration, Acc) ->
 		{finish, Columns, NodeNumber} ->
 			%lists:foreach(fun(Column) -> io:format("~p~n", [NodeNumber]), lifeio:writeBoard(Column, 4,18),io:format("~n",[]) end , Columns),
 			nodeListener(N-1, Zero, Iteration, [{Columns, NodeNumber}]++Acc);
-		
 		NodeIterResult -> 
 		nodeListener(N-1,Zero, Iteration, [NodeIterResult] ++ Acc)
 		
@@ -194,9 +191,12 @@ mainController(Columns, ColumnWidth, Height, ColumnsCount,Iteration) ->
 	{_,_,_,Zero} = Constants,
 	NodeBorderTuples = initializeNodesSupervisors(Columns, ColumnWidth, Height, ColumnsCount, Constants),
 	Begin = now(),
-	Acc = nodeNext(NodeBorderTuples, Iteration, Zero),
+	NodeBorderTuples = nodeNext(NodeBorderTuples, Iteration, Zero),
 	End = now(),
-	io:format("~p~n", [timer:now_diff(End, Begin)]),
+	io:format("Czas iteracji bez wczytywania i zapisywania planszy~p~n", [timer:now_diff(End, Begin)]),
+	Acc = lists:foreach(fun({_, {_, Node, NodeProcess}, _}) ->
+				NodeProcess ! {finish, self()} end, NodeBorderTuples),
+	nodeListener(length(NodeBorderTuples),  Zero,-1,[]),
 	Sorted = lists:sort(fun({_,NodeNumberA},{_,NodeNumberB})-> NodeNumberA >= NodeNumberB end, Acc),
 	Result = lists:foldl(fun({Columns, _}, Acc) ->  Columns ++ Acc end, [], Sorted),
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, Height+2) end, Result),
@@ -209,7 +209,7 @@ mainController(Columns, ColumnWidth, Height, ColumnsCount,Iteration) ->
 nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, ParentNode, NodeNumber) ->
 	receive
 		{Listener, RightAsRight, LeftAsRight} -> 
-			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant),
+			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerConstant),
 			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2)),
 		
 			Listener ! NodeBordersTuple,
