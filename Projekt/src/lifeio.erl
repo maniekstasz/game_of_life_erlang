@@ -1,8 +1,16 @@
 -module(lifeio).
 -export([lifeRead/1,readData/2,
-  lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3,readDataToBoard/1,writeBoardToFile/2]).
+  lifeWrite/2,writeData/2,testWrite/1,testRead/1, readDataToColumns/2,writeBoard/3,readDataToBoard/1,writeBoardToFile/2,getSize/1]).
 
 
+getSize(FileName) ->
+		{ok,Dir} = file:get_cwd(),
+		{ok,FD} = file:open(Dir ++ FileName,[read,compressed]),
+		case file:read(FD,1) of 
+				{ok,[Data]} -> file:close(FD), Data;
+				eof -> io:format("~nKoniec~n",[]);
+				{error,Reason} -> io:format("~s~n",[Reason])
+		end.
 %% Funkcja do wypisywania tablicy na ekran
 writeBoard(_,_,0) -> ok;
 writeBoard(Board, Width, Height) ->
@@ -40,7 +48,8 @@ lifeRead(FileName) ->
 readData(FD,Length) -> 
 		case file:read(FD,Length) of 
 				{ok,Data} -> Data;
-				eof -> io:format("~nKoniec~n",[]);
+				eof -> io:format("~nKoniec~n",[]),
+				file:close(FD);
 				{error,Reason} -> io:format("~s~n",[Reason])
 		end.
 

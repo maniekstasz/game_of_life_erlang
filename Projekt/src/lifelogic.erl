@@ -13,13 +13,13 @@
   next/3,
   getInnerBoard/3,
   glue/3,
-  split/3,
   getBoardExtraTopAndBottom/2]).
 
 % === WAŻNE ===
 % Width, Height - rozmiary tablicy niepowiekszonej
 % BigWidth, BigHeight - rozmiary tablicy powiekszonej
 % BigSize - analogicznie
+
 
 
 
@@ -56,18 +56,6 @@ getLeftAsRight(Board, LeftConstant, Width) ->
 -spec getRightAsLeft(integer(), integer(), integer()) -> integer().
 getRightAsLeft(Board, RightConstant, Width) ->
 	Board band RightConstant bsl Width.
-
-
-split(ColumnsCount, Width, Board) ->
-  ColumnWidth = Width div ColumnsCount,
-	split(Board,ColumnWidth, Width, 0, []).
-
-split(Board, ColumnWidth, Width, Offset, Acc)->
-	Rest = Width - Offset - ColumnWidth,
-	case Offset =:= Width of
-		true -> Acc;
-		false -> split(Board,ColumnWidth, Width, Offset+ColumnWidth, Acc ++ [<< <<0:1/unit:1,Column:ColumnWidth/unit:1,0:1/unit:1>> ||<<_:Offset, Column:ColumnWidth,_:Rest>> <= Board>>] )
-	end.
 
 
 
