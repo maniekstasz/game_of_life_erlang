@@ -11,7 +11,11 @@ getSize(FileName) ->
 				eof -> io:format("~nKoniec~n",[]);
 				{error,Reason} -> io:format("~s~n",[Reason])
 		end.
+
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% Funkcja do wypisywania tablicy na ekran
+%% ---------------------------------------------------------------------------------------------------------------------
 writeBoard(_,_,0) -> ok;
 writeBoard(Board, Width, Height) ->
 	<<A:Width, Rest/bits>> = Board,
@@ -19,13 +23,21 @@ writeBoard(Board, Width, Height) ->
 	io:fwrite("~s~n", [Data]),
 	writeBoard(Rest,Width, Height-1).
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% Funkcja
+%% ---------------------------------------------------------------------------------------------------------------------
 writeLineByLine(_,_,_,0) -> ok;
 writeLineByLine(Board, BoardSize, FD, Count)->
 	<<A:BoardSize, Rest/bits>> = Board,
 	Data = [B + 48 || <<B:1>> <= <<A:BoardSize>>],
 	writeData(FD, Data),
 	writeLineByLine(Rest, BoardSize,FD, Count-1).
-	
+
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% Funkcja
+%% ---------------------------------------------------------------------------------------------------------------------
 writeBoardToFile(Board, BoardSize) ->
 	{ok,Dir} = file:get_cwd(),
 	Size = trunc(math:log(BoardSize)/math:log(2)),
@@ -34,8 +46,11 @@ writeBoardToFile(Board, BoardSize) ->
 	writeLineByLine(Board, BoardSize,FD, BoardSize),
 	file:close(FD).
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% otwarcie pliku do wczytywania
 %% zwracany jest deskryptor pliku i rozmiar danych/planszy
+%% ---------------------------------------------------------------------------------------------------------------------
 lifeRead(FileName) ->
 		{ok,FD} = file:open(FileName,[read,compressed]),
 		case file:read(FD,1) of 
@@ -44,7 +59,10 @@ lifeRead(FileName) ->
 				{error,Reason} -> io:format("~s~n",[Reason])
 		end.
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% odczytanie kolejnej porcji danych o ĹĽÄ…danym rozmiarze
+%% ---------------------------------------------------------------------------------------------------------------------
 readData(FD,Length) -> 
 		case file:read(FD,Length) of 
 				{ok,Data} -> Data;
@@ -53,6 +71,10 @@ readData(FD,Length) ->
 				{error,Reason} -> io:format("~s~n",[Reason])
 		end.
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% Funkcja
+%% ---------------------------------------------------------------------------------------------------------------------
 readParts(_,0,ColumnWidth,_,Acc) -> 
 		Boards = lists:map(fun(Elem) -> 
 					  <<Elem/bits, 0:1/unit:1, 0:ColumnWidth/unit:1,0:1/unit:1>> end, Acc),
@@ -68,6 +90,10 @@ readParts(FD, Total, Width, Count) ->
 	Acc = [<<0:ColumnWidth/unit:1>> || _ <- lists:seq(1, Count)],
 	readParts(FD, Total, ColumnWidth-2,Count, Acc).
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% Funkcja
+%% ---------------------------------------------------------------------------------------------------------------------
 readDataToBoard(FileName) ->
   {FD,Pow} = lifeRead(FileName),
   BoardSize = trunc(math:pow(2, Pow)),
@@ -75,8 +101,11 @@ readDataToBoard(FileName) ->
   Board = << <<Bin:1>> || Bin <- Data >>,
   {BoardSize, Board}.
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% Wczytuje tablicę z pliku
 %% Dzieli ja na zadana liczbe column. Zwraca rozmiar calej tablicy liste kolumn i rozmiar kolumny(bez dwoch dodatkowych bitow)
+%% ---------------------------------------------------------------------------------------------------------------------
 readDataToColumns(FileName, ColumnsCount) ->
   {ok,Dir} = file:get_cwd(),
 	{FD,Pow} = lifeRead(Dir ++ FileName),
@@ -88,29 +117,26 @@ readDataToColumns(FileName, ColumnsCount) ->
   	BoardsAsIntegers = lists:map(fun(Board) -> <<AsInteger:ColumnBigSize>> = Board, AsInteger end, Boards),
 	{BoardSize, BoardsAsIntegers}.
 
-%prepareBoardToWrite(0, _, Data) ->Data;
-%prepareBoardToWrite(BoardSize, Board, Data) ->
-%	<<A:BoardSize, Rest/bits>> = Board,
-%	Data = [B + 48 || <<B:1>> <= <<A:BoardSize>>],
-%	writeBoard(BoardSize,Rest, Data).
 
-
-
-	
-	
-
+%% ---------------------------------------------------------------------------------------------------------------------
 %% otwarcie pliku do zapisu planszy o wskazanym rozmiarze
+%% ---------------------------------------------------------------------------------------------------------------------
 lifeWrite(FileName,Size)->
 		{ok,FD} = file:open(FileName,[write,compressed]),
 		file:write(FD,Size),
 		{ok,FD}.
 
+%% ---------------------------------------------------------------------------------------------------------------------
 %% zapisanie kolejnej porcji danych
+%% ---------------------------------------------------------------------------------------------------------------------
 writeData(FD,Data) ->
 		file:write(FD,Data).
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% procedura testowa zapisujÄ…ca losowÄ… plansze
 %% o wskazanym rozmiarze
+%% ---------------------------------------------------------------------------------------------------------------------
 testWrite(Size) ->
 		Len = trunc(math:pow(2,Size)),
 		{ok,Dir} = file:get_cwd(),
@@ -120,15 +146,18 @@ testWrite(Size) ->
 		file:close(FD).
 
 
+%% ---------------------------------------------------------------------------------------------------------------------
 %% Trochę to funkcje zmieniłem, żeby zapisywała 0 i jedynki do pliku
+%% ---------------------------------------------------------------------------------------------------------------------
 feedData(_FD,0,_Len)-> ok;
 feedData(FD,Count,Len) ->
 		Data = [random:uniform(2)+47 || _ <- lists:seq(1, Len)],
 		writeData(FD,Data),
 		feedData(FD,Count-1,Len).
 
-
+%% ---------------------------------------------------------------------------------------------------------------------
 %% procedura testowa odczytujÄ…ca planszÄ™ z pliku
+%% ---------------------------------------------------------------------------------------------------------------------
 testRead(FileName) ->
 		{FD,Size} = lifeRead(FileName),
 		Len = trunc(math:pow(2,Size)),
@@ -137,6 +166,9 @@ testRead(FileName) ->
 		file:close(FD).
 
 
+%% ---------------------------------------------------------------------------------------------------------------------
+%% Funkcja
+%% ---------------------------------------------------------------------------------------------------------------------
 getData(_FD,_Len,0) -> ok;
 getData(FD,Len,Count) ->
 		readData(FD,Len),

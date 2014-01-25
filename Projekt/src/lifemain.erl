@@ -1,13 +1,10 @@
 -module(lifemain).
 
 -export([testLocal/0]).
+-export([calculateSingleColumn/3]).
+-export([prepareColumnTuples/6,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, test_time/2, iterateLocal/9]).
+-export([iterate/8]).
 
--export([calculateSingleColumn/4]).
--export([prepareColumnTuples/7,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, test_time/2, iterateLocal/10, iterate/9]).
-
--export([iterate/9]).
-
--type board() :: integer().
 -type column() :: integer().
 -type columns() :: [column()].
 -type border() :: integer().
@@ -15,10 +12,7 @@
 -type columnTuples() :: [columnTuple()].
 -type columnTriple() :: {columnTuple(),columnTuple(),columnTuple()}.
 -type columnTriples() :: [columnTriple()].
--type nodes() :: [node()].
--type key() :: pid().
--type nodeKey() :: {node(), key()}.
--type nodeKeys() :: [nodeKey()].
+
 
 %% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Jest to glowna metoda sterujaca calym programem.
@@ -31,7 +25,7 @@ test_time(IterationCount, WriteFinalBoard)->
 	ColumnWidth = BoardSize div ColumnsCount,
 	{InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
 	{IterationTime, Result} = case NodesCount of
-		0 -> lifemain:iterateLocal(Columns, ColumnWidth, BoardSize, ColumnsCount, Zero, Zero, LeftConstant, RightConstant, InnerConstant, IterationCount);
+		0 -> lifemain:iterateLocal(Columns, ColumnWidth, BoardSize, Zero, Zero, LeftConstant, RightConstant, InnerConstant, IterationCount);
 		_ -> lifeconc:mainController(Nodes, Columns, ColumnWidth, BoardSize, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, IterationCount)
 	end,
 	io:format("Czas iteracji ~p~n", [IterationTime]),
@@ -55,38 +49,6 @@ writeFinalColumns(Columns, ColumnWidth, Height)->
 	lifeio:writeBoardToFile(Glued, Height).
 
 
-gatherResult(NodeKeyList, Count) -> gatherResult(NodeKeyList, Count, 0).
-gatherResult(_, 0, Data) -> Data;
-gatherResult(NodeKeyList, NodesLeft, Data) ->
-  receive
-    {ok, Node} ->
-      {_, Key} = lists:keyfind(Node, 1, NodeKeyList),
-      RemoteResult = rpc:yield(Key),
-      io:format("- Dostalem od ~s klucz ~p; wartosc: ", [Node, Key]),
-      io:write(RemoteResult),
-      io:format("~n"),
-      gatherResult(NodeKeyList, NodesLeft-1, Data);
-    _Other ->
-      io:format("Dostalem cos dziwnego:~n"),
-      io:write(_Other),
-      io:format("~n~n")
-  after 15000 ->
-    io:format("Timeout 15 sekund~n"),
-    timeout
-  end,
-  Data.
-
-
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda lokalnie przeliczajaca kolumny. Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
-%%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan, a nastepnie skleja wynikowe kolumny w jedna i zwraca ja.
-%% ---------------------------------------------------------------------------------------------------------------------
--spec initializeNode(node(),columnTuples(),integer(),integer()) -> nodeKey().
-initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) ->
-  NodeKey = conc:createNode(Node,self(),{lifemain,performLocalChunk,[NodeChunk,BoardSize,ColumnWidth]}),
-  NodeKey.
-
-
 %% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda testujaca wydajnosc lokalnej maszyny.
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -100,6 +62,10 @@ testLocal(Size) ->
   executeTestLocal(ProcList, 1, Filename ++ '.gz'),
   testLocal(Size+1).
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda
+%% ---------------------------------------------------------------------------------------------------------------------
 executeTestLocal([],_,_) -> ok;
 executeTestLocal([Count|Nextx], IterationsNumber,Filename) ->
   {LoadTime, {BoardSize, Columns}} = timer:tc(lifeio, readDataToColumns, [Filename, Count]),
@@ -107,7 +73,7 @@ executeTestLocal([Count|Nextx], IterationsNumber,Filename) ->
   ColumnWidth = BoardSize div Count,
   {InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
   lists:map(fun(X) ->
-    {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns,ColumnWidth,BoardSize, Count, Zero, Zero, LeftConstant, RightConstant, InnerConstant, X]),
+    {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns,ColumnWidth,BoardSize, Zero, Zero, LeftConstant, RightConstant, InnerConstant, X]),
     io:format("iteracji: ~b, czas: ~b~n", [X, IterateTime]) end,
     lists:seq(1,IterationsNumber)),
   executeTestLocal(Nextx, IterationsNumber, Filename).
@@ -116,16 +82,16 @@ executeTestLocal([Count|Nextx], IterationsNumber,Filename) ->
 %% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda wywolujaca metode iterate zadana ilosc razy. Zwraca kolumny po iteracji oraz czas iteracji.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec iterateLocal(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> {integer(), columns()}.
-iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst, IterationCounter) ->
-%	io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
-%	io:format("Rozpoczynam mierzenie czasu~n",[]),
+-spec iterateLocal(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> {integer(), columns()}.
+iterateLocal(Columns,ColumnWidth,Height, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst, IterationCounter) ->
+io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
+io:format("Rozpoczynam mierzenie czasu~n",[]),
 	Begin = now(),
  	Result = lists:foldl(fun(_, Acc) -> 
-		lifemain:iterate(Acc, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerBoardConst) end, Columns,
-							  lists:seq(1, IterationCounter)),
+		lifemain:iterate(Acc, ColumnWidth,Height,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerBoardConst) end,
+    Columns, lists:seq(1, IterationCounter)),
 	End = now(),
-%	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
+io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	{timer:now_diff(End, Begin),Result}.
 
 
@@ -134,10 +100,10 @@ iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight
 %%      Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody
 %%      rpc:pmap, przelicza dla kazdej kolumny nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec iterate(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> columns().
-iterate(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst) ->
-  ColumnTuples = prepareColumnTuples(Columns,ColumnWidth, Height,LeftAsRight, RightAsRight,LeftConstant, RightConstant),
-  rpc:pmap({lifemain,calculateSingleColumn},[Height,ColumnWidth, InnerBoardConst],ColumnTuples).
+-spec iterate(columns(), integer(), integer(),integer(), integer(), integer(), integer(), integer()) -> columns().
+iterate(Columns,ColumnWidth,Height, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst) ->
+  ColumnTuples = prepareColumnTuples(Columns,ColumnWidth,LeftAsRight, RightAsRight,LeftConstant, RightConstant),
+  rpc:pmap({lifemain,calculateSingleColumn},[Height, InnerBoardConst],ColumnTuples).
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -145,13 +111,10 @@ iterate(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, Lef
 %%      o krawedzie poprzedniej i nastepnej kolumny, przeliczane sa stany wszystkich komorek kolumny, a nastepnie
 %%      kolumna jest obcinana ze zbednych elementow i zwracana.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec calculateSingleColumn(columnTuple(), integer(), integer(), integer()) -> column().
-calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth, InnerBoardConst) ->
-  %{InnerBoardConst,_,_,_} = lifelogic:createConstants(ColumnWidth, BoardSize),
-  ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
-  ColumnWithBorders = lifelogic:setBorders(InnerBoardConst, ExtendedColumnSize, ColumnTuple),
-  Next = lifelogic:next(ColumnWithBorders, ColumnWidth+2, BoardSize+2),
-  %Inner = lifelogic:getInnerBoard(Next, ColumnWidth+2, BoardSize+2),
+-spec calculateSingleColumn(columnTuple(), integer(), integer()) -> column().
+calculateSingleColumn(ColumnTuple, ColumnWidth, InnerBoardConst) ->
+  ColumnWithBorders = lifelogic:setBorders(InnerBoardConst, ColumnTuple),
+  Next = lifelogic:next(ColumnWithBorders, ColumnWidth+2),
   Next.
 
 
@@ -161,12 +124,9 @@ calculateSingleColumn(ColumnTuple, BoardSize, ColumnWidth, InnerBoardConst) ->
 %%      jesli ostatnia kolumna)}. Takie struktury danych umozliwiaja niezalezne przeliczanie poszczegolnych kolumn
 %%      w rozproszeniu.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec prepareColumnTuples(columns(), integer(),integer(), bitstring(), bitstring(), integer(), integer()) -> columnTuples().
-prepareColumnTuples(Columns,ColumnWidth, BoardSize, LeftAsRight, RightAsRight, LeftConstant, RightConstant) ->
-  %ColumnWidth = BoardSize div length(Columns),
-  ExtendedColumnSize = (ColumnWidth+2) * (BoardSize+2),
-%  {_, Left, Right, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
-  BorderTuples = lists:map(fun(Column) -> lifelogic:getBorders(Column, LeftConstant, RightConstant, ColumnWidth, ExtendedColumnSize) end, Columns),
+-spec prepareColumnTuples(columns(), integer(), bitstring(), bitstring(), integer(), integer()) -> columnTuples().
+prepareColumnTuples(Columns,ColumnWidth, LeftAsRight, RightAsRight, LeftConstant, RightConstant) ->
+  BorderTuples = lists:map(fun(Column) -> lifelogic:getBorders(Column, LeftConstant, RightConstant, ColumnWidth) end, Columns),
   ColumnTriplets = borderTuplesToColumnTriples(BorderTuples),
   FinalColumnTuples = lists:map(fun(ColumnTriple) ->
     columnTripleToTuple(ColumnTriple, LeftAsRight, RightAsRight) end,
