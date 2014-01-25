@@ -1,6 +1,6 @@
 -module(lifemain).
 
--export([testTimeLocal/0,testTimeLocal/2]).
+-export([testLocal/0]).
 
 -export([calculateSingleColumn/4]).
 -export([prepareColumnTuples/7,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, test_time/2, iterateLocal/10, iterate/9]).
@@ -20,7 +20,9 @@
 -type nodeKey() :: {node(), key()}.
 -type nodeKeys() :: [nodeKey()].
 
-%% @doc Jest to glowna metoda sterujaca calym programem. 
+%% ---------------------------------------------------------------------------------------------------------------------
+%% @doc Jest to glowna metoda sterujaca calym programem.
+%% ---------------------------------------------------------------------------------------------------------------------
 -spec test_time(integer(), atom()) -> ok.
 test_time(IterationCount, WriteFinalBoard)->
 	Size = lifeio:getSize('/fff.gz'),
@@ -41,8 +43,11 @@ test_time(IterationCount, WriteFinalBoard)->
 		false -> ok
 	end,
 	io:format("Koniec~n",[]).
-	
+
+
+%% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda zapisuje do pliku podane kolumny jako jedną tablice
+%% ---------------------------------------------------------------------------------------------------------------------
 -spec writeFinalColumns(columns(), integer(), integer()) -> ok.
 writeFinalColumns(Columns, ColumnWidth, Height)->
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, Height+2) end, Columns),
@@ -82,42 +87,47 @@ initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) ->
   NodeKey.
 
 
-testTimeLocal() -> testTimeLocal(256, 10).
 %% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda testujaca wydajnosc lokalnej maszyny. Dla podanej liczby procesow i iteracji wykonuje obliczenia dla
-%%      wszystkich kolejnych iteracji (od jednej do zadanej, krok N+1) i wszystkich mozliwych liczb procesow (od zadanej do
-%%      jednego procesu, krok N/2).
+%% @doc Metoda testujaca wydajnosc lokalnej maszyny.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec testTimeLocal(integer(), integer()) -> ok.
-testTimeLocal(0,_) -> ok;
-testTimeLocal(Count, IterationsNumber) ->
-  {LoadTime, {BoardSize, Columns}} = timer:tc(lifeio, readDataToColumns, ['/fff.gz', Count]),
-  io:format("liczba procesow: ~B, rozmiar planszy: ~B, czas ladowania: ~B~n",
-  [Count, BoardSize, LoadTime]),
+-spec testLocal() -> ok.
+testLocal() -> testLocal(8).
+testLocal(15) -> ok;
+testLocal(Size) ->
+  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size),
+  io:format("rozmiar: ~b, proc: ~w~n", [Size, ProcList]),
+  Filename = "/fff" ++ lists:flatten(io_lib:format("~p", [Size])),
+  executeTestLocal(ProcList, 1, Filename ++ '.gz'),
+  testLocal(Size+1).
+
+executeTestLocal([],_,_) -> ok;
+executeTestLocal([Count|Nextx], IterationsNumber,Filename) ->
+  {LoadTime, {BoardSize, Columns}} = timer:tc(lifeio, readDataToColumns, [Filename, Count]),
+  io:format("procesow: ~B, plansza: ~B, ladowanie: ~B ", [Count, BoardSize, LoadTime]),
   ColumnWidth = BoardSize div Count,
   {InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
   lists:map(fun(X) ->
     {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns,ColumnWidth,BoardSize, Count, Zero, Zero, LeftConstant, RightConstant, InnerConstant, X]),
-    io:format("[liczba iteracji, czas iteracji]~n",[]),
-	io:format("~w~n", [[X, IterateTime]]) end,
+    io:format("iteracji: ~b, czas: ~b~n", [X, IterateTime]) end,
     lists:seq(1,IterationsNumber)),
-  io:format("~n"),
-  NewCount = Count div 2,
-  testTimeLocal(NewCount, IterationsNumber).
+  executeTestLocal(Nextx, IterationsNumber, Filename).
 
 
+%% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda wywolujaca metode iterate zadana ilosc razy. Zwraca kolumny po iteracji oraz czas iteracji.
+%% ---------------------------------------------------------------------------------------------------------------------
 -spec iterateLocal(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> {integer(), columns()}.
 iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst, IterationCounter) ->
-	io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
-	io:format("Rozpoczynam mierzenie czasu~n",[]),
+%	io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
+%	io:format("Rozpoczynam mierzenie czasu~n",[]),
 	Begin = now(),
  	Result = lists:foldl(fun(_, Acc) -> 
 		lifemain:iterate(Acc, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerBoardConst) end, Columns,
 							  lists:seq(1, IterationCounter)),
 	End = now(),
-	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
+%	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	{timer:now_diff(End, Begin),Result}.
+
 
 %% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda iterujaca na lokalnej maszynie. Z podanych kolumn tworzy krotki kolumn, ktore nastepnie rozsyla do
