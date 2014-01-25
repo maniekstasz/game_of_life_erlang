@@ -94,7 +94,7 @@ initializeNode(Node, NodeChunk, BoardSize, ColumnWidth) ->
 testLocal() -> testLocal(8).
 testLocal(15) -> ok;
 testLocal(Size) ->
-  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size),
+  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size-7, 8),
   io:format("rozmiar: ~b, proc: ~w~n", [Size, ProcList]),
   Filename = "/fff" ++ lists:flatten(io_lib:format("~p", [Size])),
   executeTestLocal(ProcList, 1, Filename ++ '.gz'),
