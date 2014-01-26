@@ -1,9 +1,10 @@
 -module(lifemain).
 
--export([testLocal/0]).
+-export([test_time/2]).
 -export([calculateSingleColumn/3]).
--export([prepareColumnTuples/6,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, test_time/2, iterateLocal/9]).
+-export([prepareColumnTuples/6,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, iterateLocal/9]).
 -export([iterate/8]).
+-export([nodeBenchmark/1]).
 
 -type column() :: integer().
 -type columns() :: [column()].
@@ -14,13 +15,45 @@
 -type columnTriples() :: [columnTriple()].
 
 
+
+%% ---------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda benchmarkujaca wezly.
+%% ---------------------------------------------------------------------------------------------------------------------
+nodeBenchmark(Nodes) ->
+  Size = lifeio:getSize('/fff.gz'),
+  CNodes = case length(Nodes) of 0->0; 1->1; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; 8->8; 9->8; 10->8 end,
+  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size-5, 5),
+% [16384,8192,4096,2048,1024,512,256,128,64,32,16,8,4,2,1]
+  io:format("Size: ~b, proc: ~w~n", [Size, ProcList]),
+  iterateForProcesses(CNodes, ProcList, Nodes).
+
+iterateForProcesses(_, [], _) -> ok;
+iterateForProcesses(CNodes, [CProc|Rest], Nodes) ->
+  iterateForNodes(CNodes, CProc, Nodes),
+  iterateForProcesses(CNodes, Rest, Nodes).
+
+
+iterateForNodes(0, CColumns, _) ->
+  Configuration = {0, CColumns, []},
+  test_time(2,false,Configuration),
+  ok;
+iterateForNodes(CNodes,CColumns, Nodes) ->
+  SubNodes = lists:sublist(Nodes, CNodes),
+  Configuration = {CNodes, CColumns, SubNodes},
+  test_time(2,false,Configuration),
+  iterateForNodes(CNodes div 2, CColumns, Nodes).
+
+
 %% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Jest to glowna metoda sterujaca calym programem.
 %% ---------------------------------------------------------------------------------------------------------------------
--spec test_time(integer(), atom()) -> ok.
 test_time(IterationCount, WriteFinalBoard)->
-	Size = lifeio:getSize('/fff.gz'),
-	{NodesCount, ColumnsCount, Nodes} = lifeconc:getBestConfiguration(Size),
+  Size = lifeio:getSize('/fff.gz'),
+  test_time(IterationCount, WriteFinalBoard, lifeconc:getBestConfiguration(Size)).
+
+-spec test_time(integer(), atom(), any()) -> ok.
+test_time(IterationCount, WriteFinalBoard, Configuration)->
+	{NodesCount, ColumnsCount, Nodes} = Configuration,
 	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', ColumnsCount),
 	ColumnWidth = BoardSize div ColumnsCount,
 	{InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
@@ -28,7 +61,7 @@ test_time(IterationCount, WriteFinalBoard)->
 		0 -> lifemain:iterateLocal(Columns, ColumnWidth, BoardSize, Zero, Zero, LeftConstant, RightConstant, InnerConstant, IterationCount);
 		_ -> lifeconc:mainController(Nodes, Columns, ColumnWidth, BoardSize, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, IterationCount)
 	end,
-	io:format("Czas iteracji ~p~n", [IterationTime]),
+	io:format("Time ~p~n", [IterationTime]),
 	case WriteFinalBoard of 
 		true ->
 			io:format("Zapisuje tablice do pliku~n",[]),
@@ -36,7 +69,7 @@ test_time(IterationCount, WriteFinalBoard)->
 			io:format("Tablica zapisana~n",[]);
 		false -> ok
 	end,
-	io:format("Koniec~n",[]).
+  ok.
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -50,48 +83,16 @@ writeFinalColumns(Columns, ColumnWidth, Height)->
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda testujaca wydajnosc lokalnej maszyny.
-%% ---------------------------------------------------------------------------------------------------------------------
--spec testLocal() -> ok.
-testLocal() -> testLocal(8).
-testLocal(15) -> ok;
-testLocal(Size) ->
-  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size-7, 8),
-  io:format("rozmiar: ~b, proc: ~w~n", [Size, ProcList]),
-  Filename = "/fff" ++ lists:flatten(io_lib:format("~p", [Size])),
-  executeTestLocal(ProcList, 1, Filename ++ '.gz'),
-  testLocal(Size+1).
-
-
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda
-%% ---------------------------------------------------------------------------------------------------------------------
-executeTestLocal([],_,_) -> ok;
-executeTestLocal([Count|Nextx], IterationsNumber,Filename) ->
-  {LoadTime, {BoardSize, Columns}} = timer:tc(lifeio, readDataToColumns, [Filename, Count]),
-  io:format("procesow: ~B, plansza: ~B, ladowanie: ~B ", [Count, BoardSize, LoadTime]),
-  ColumnWidth = BoardSize div Count,
-  {InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
-  lists:map(fun(X) ->
-    {IterateTime,_} = timer:tc(lifemain, iterateLocal, [Columns,ColumnWidth,BoardSize, Zero, Zero, LeftConstant, RightConstant, InnerConstant, X]),
-    io:format("iteracji: ~b, czas: ~b~n", [X, IterateTime]) end,
-    lists:seq(1,IterationsNumber)),
-  executeTestLocal(Nextx, IterationsNumber, Filename).
-
-
-%% ---------------------------------------------------------------------------------------------------------------------
 %% @doc Metoda wywolujaca metode iterate zadana ilosc razy. Zwraca kolumny po iteracji oraz czas iteracji.
 %% ---------------------------------------------------------------------------------------------------------------------
 -spec iterateLocal(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> {integer(), columns()}.
 iterateLocal(Columns,ColumnWidth,Height, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst, IterationCounter) ->
-io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
-io:format("Rozpoczynam mierzenie czasu~n",[]),
+io:format("Nodes: 0, Cols: ~b, Iterations: ~b -> ",[length(Columns), IterationCounter]),
 	Begin = now(),
  	Result = lists:foldl(fun(_, Acc) -> 
 		lifemain:iterate(Acc, ColumnWidth,Height,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerBoardConst) end,
     Columns, lists:seq(1, IterationCounter)),
 	End = now(),
-io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	{timer:now_diff(End, Begin),Result}.
 
 

@@ -26,8 +26,7 @@
 -spec getBestConfiguration(integer()) -> {integer(), integer(), nodes()}.
 getBestConfiguration(Size) ->
   Nodes = net_adm:world(),
-  io:format("Wezly odpowiadaja kolejno:~n~w~n", [lists:map(fun(X) -> net_adm:ping(X) end, Nodes)]),
-  CNodes = case length(Nodes) of 1->1; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; 8->8; 9->8; 10->8 end,
+  CNodes = case length(Nodes) of 0->0; 1->1; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; 8->8; 9->8; 10->8 end,
   Columns = case Size of 8->8; 9->16; 10->32; 11->64; 12->65; 13->128; 14->128 end,
   {CNodes, Columns, lists:sublist(Nodes,CNodes)}.
 
@@ -40,11 +39,10 @@ getBestConfiguration(Size) ->
 mainController(Nodes, Columns, ColumnWidth, Height, ColumnsCount,Constants, Iteration) ->
 	{_,_,_,Zero} = Constants,
 	NodeBorderTuples = initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Constants),
-	io:format("Przystepujemy do iteracji. Od tej pory liczymy czas~n",[]),
+	io:format("Nodes: ~b, Cols: ~b, Iterations: ~b -> ",[length(Nodes), ColumnsCount, Iteration]),
 	Begin = now(),
 	NodeTuples = nodeNext(NodeBorderTuples, Iteration, Zero),
 	End = now(),
-	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	ResultedColumns = callFinishOnNodes(NodeTuples),
 	Result = getFinalColumns(ResultedColumns),
 	{timer:now_diff(End, Begin), Result}.
@@ -128,19 +126,16 @@ initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Co
 	NodesCount = length(Nodes),
 	ColumnsPerNode = ColumnsCount div NodesCount,
 	{_,LeftConstant, RightConstant,_} = Constants,
-	io:format("Rozpoczynam przesylanie danych do ~p wezlow ~n", [NodesCount]),
 	NodeTuples = lists:map(fun(Node) ->
 		NodeNumber = lifemain:indexOf(Node,Nodes)-1,
 		case NodeNumber of
 	    0 -> NodeColumns = lists:sublist(Columns,1 , ColumnsPerNode);
 	    _ -> NodeColumns = lists:sublist(Columns,NodeNumber*ColumnsPerNode +1, ColumnsPerNode)
 	    end,
-		io:format("~p ", [Node]),
 		NodeProcess = spawn(Node, lifeconc, nodeSupervise, [NodeColumns, ColumnWidth, Height, length(NodeColumns),Constants, node(), NodeNumber]),
 		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth)
 	    end,
     Nodes),
-	io:format("~nDane przeslane~n"),
 	NodeTuples.
 
 
