@@ -1,72 +1,126 @@
-%% @author Mateusz Jabłoński
-%% @doc Modul odpowiedzialny za rozproszenie obliczen. Zarzadza procesami rozproszonymi po wszystkich dostepnych
-%%      wezlach, zajmuje sie transferem danych i inicjalizowaniem.
-%% @end
+%% @author Szymon Konicki
+%% @doc Modul odpowiedzialny za rozproszenie obliczen.
+%%      Zarzadza procesami rozproszonymi po
+%%      wszystkich dostepnych wezlach, zajmuje sie
+%%      transferem danych i inicjalizowaniem
 -module(lifeconc).
 -export([
-  getBestConfiguration/1,
   mainController/7,
   nodeSupervise/7,
-  getNodeBorders/5,
-  nodeNext/3,
-  nodeListener/3,
-  nodeListener/4,
-  initializeNodesSupervisors/6,
-  callFinishOnNodes/1,
-  getFinalColumns/1]).
+  getBestConfiguration/1
+]).
 
 
-%metoda wolana nie wprost
--compile([{nowarn_unused_function, [{ nodeSupervise, 7}]}]).
-
-
+-type modules() :: [module()].
 -type nodes() :: [node()].
+-type func() :: atom().
+-type args () :: [any()].
+-type pkey() :: pid().
 -type column() :: integer().
 -type columns() :: [column()].
 -type nodeTuple() :: {integer(), node(), pid()}.
 
-
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Funkcja zwraca najbardziej korzystna konfiguracje do wykonania zadania. Forma zwrotki {liczbe wezlow (0 gdy ma
-%%      sie wykonać lokalnie), liczbe wszystkich kolumn, wezly} dla danego rozmiaru planszy
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Funkcja zwraca najbardziej korzystną konfigurację {liczbę wezłów(0 gdy ma się wykonać lokalnie), Liczbę wszystkich kolumn, węzły}
+%%      dla danego rozmiaru planszy
 -spec getBestConfiguration(integer()) -> {integer(), integer(), nodes()}.
 getBestConfiguration(Size) ->
   Nodes = net_adm:world(),
-  CNodes = case length(Nodes) of 0->0; 1->1; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; 8->8; 9->8; 10->8 end,
-  Columns = case Size of 8->8; 9->16; 10->32; 11->64; 12->65; 13->128; 14->128 end,
-  {CNodes, Columns, lists:sublist(Nodes,CNodes)}.
-
-
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Kontroler wezlow. Uruchamia, synchronizuje i konczy procesy na wezlach.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec mainController(nodes(), columns(), integer(), integer(), integer(), integer(), integer()) ->
-  {integer(), columns()}.
+  NodesCount = case length(Nodes) of 0->0; 1->0; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; _->8 end,
+  case Size of
+    8 -> %256
+      CNodes = 0,
+      CProc = 4;
+    9 -> %1024
+    CNodes = 0,
+    CProc = 8;
+    10 -> %1024
+      CNodes = 0,
+      CProc = 16;
+    %%
+    11 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 32
+      end;
+    12 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end;
+    13 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end;
+    14 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end
+  end,
+	{CNodes, CProc, lists:sublist(Nodes, CNodes)}.
+	
+%% @doc Funkcja ta to kontroler wezlow: uruchamia, synchronizuje i kończy procesy na wezlach.
+-spec mainController(nodes(), columns(), integer(), integer(), integer(), integer(), integer()) -> {integer(),columns() }.
 mainController(Nodes, Columns, ColumnWidth, Height, ColumnsCount,Constants, Iteration) ->
 	{_,_,_,Zero} = Constants,
 	NodeBorderTuples = initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Constants),
-	io:format("Nodes: ~b, Cols: ~b, Iterations: ~b -> ",[length(Nodes), ColumnsCount, Iteration]),
+	io:format("Remote (~b nodes); Processes: ~b, Iterations: ~b -> ",[length(Nodes),ColumnsCount,Iteration]),
 	Begin = now(),
 	NodeTuples = nodeNext(NodeBorderTuples, Iteration, Zero),
 	End = now(),
 	ResultedColumns = callFinishOnNodes(NodeTuples),
-	Result = getFinalColumns(ResultedColumns),
-	{timer:now_diff(End, Begin), Result}.
+	Result = getFinalColumns(ResultedColumns, ColumnWidth, Height),
+	{timer:now_diff(End, Begin), Result}.		
 
-
-%-----------------------------------------------------------------------------------------------------------------------
+	
 %% @doc Funkcja kontroluje procesy na danym wezle. Komunikuje sie z mainController.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
 -spec nodeSupervise(columns(), integer(), integer(), integer(), {integer(), integer(), integer(), integer()}, node(), pid()) -> ok.
 nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, ParentNode, NodeNumber) ->
 	receive
 		{Listener, RightAsRight, LeftAsRight} -> 
-			NewColumns = lifemain:iterateLocal(Columns, ColumnWidth,Height,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerConstant),
-			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth),
+			NewColumns = lifemain:iterate(Columns, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerConstant),
+			NodeBordersTuple = getNodeBorders(NewColumns, {NodeNumber, node(), self()}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2)),
 			Listener ! NodeBordersTuple,
 			nodeSupervise(NewColumns, ColumnWidth, Height, ColumnsCount, {InnerConstant,LeftConstant, RightConstant,Zero}, ParentNode, NodeNumber);
 		{finish, Listener} ->
@@ -74,25 +128,19 @@ nodeSupervise(Columns, ColumnWidth, Height, ColumnsCount, {InnerConstant, LeftCo
 	end.
 
 
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Funkcja zwraca krotke {lewa krawedx wezla, dane wezla, prawa krawedz wezla}.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec getNodeBorders(columns(),nodeTuple(), integer(), integer(), integer()) -> {integer(),nodeTuple(), integer() }.
-getNodeBorders(Columns, NodeTuple, LeftConstant, RightConstant, ColumnWidth) ->
+%% @doc Funkcja zwraca krotke {lewa krawedx wezla, dane wezla, prawa krawedz wezla}
+-spec getNodeBorders(columns(),nodeTuple(), integer(), integer(), integer(), integer()) -> {integer(),nodeTuple(), integer() }.
+getNodeBorders(Columns, NodeTuple, LeftConstant, RightConstant, ColumnWidth, BigSize) ->
 	[First| _] = Columns,
 	Last = lists:last(Columns),
 	LeftBorder = lifelogic:getLeftAsRight(First, LeftConstant, ColumnWidth),
 	RightBorder = lifelogic:getRightAsLeft(Last, RightConstant, ColumnWidth),
 	{LeftBorder, NodeTuple, RightBorder}.
 
-
-%-----------------------------------------------------------------------------------------------------------------------
 %% @doc Funkcja wymienia krawedzie pomiedzy wezlami i wywoluje nastepna iteracje.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
 -spec nodeNext([nodeTuple()], integer(), integer()) -> [nodeTuple()].
-nodeNext(NodeBorderTuples, 0, _) -> NodeBorderTuples;
+nodeNext(NodeBorderTuples, 0, Zero) ->
+	NodeBorderTuples;
 nodeNext(NodeBorderTuples, Iteration, Zero) ->
   	NodeTriplets = lifemain:borderTuplesToColumnTriples(NodeBorderTuples),
  	FinalColumnTuples = lists:map(fun(NodeTriplet) ->
@@ -102,13 +150,10 @@ nodeNext(NodeBorderTuples, Iteration, Zero) ->
 				NodeProcess ! {self(), RightAsLeft, LeftAsRight} end,
 				 FinalColumnTuples),
 	nodeListener(length(NodeBorderTuples),Zero,Iteration, []).
+	
 
 
-%-----------------------------------------------------------------------------------------------------------------------
 %% @doc Funkcja czeka na odpowiedz wezlow o zakonczeniu wszystkich iteracji. Laczy ze soba zwracane przez wezly kolumny.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec nodeListener(integer(),integer(),any()) -> ok.
 nodeListener(0, -1, Acc)->
 	Acc;
 nodeListener(N, Iteration, Acc) ->
@@ -117,13 +162,8 @@ nodeListener(N, Iteration, Acc) ->
 			nodeListener(N-1, Iteration, [{Columns, NodeNumber}]++Acc)
 	end.
 
-
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Funkcja czeka na odpowiedz wezlow o zakonczeniu danej iteracji. Kiedy odbierze wszystkie sortuje odpowiedzi
-%%      wzgledem numerow wezlow, aby mozliwa byla wymiana krawedzi.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec nodeListener(integer(),integer(),integer(),any()) -> ok.
+%% @doc Funkcja czeka na odpowiedz wezlow o zakonczeniu danej iteracji. Kiedy odbierze wszystkie sortuje odpowiedzi wzgledem numerow wezlow,
+%%		aby mozliwa byla wymiana krawedzi.
 nodeListener(0,Zero,Iteration, Acc)->
 	SortedNodeBorderTuples = lists:sort(fun({_,{NodeNumberA, _,_},_},{_,{NodeNumberB, _,_},_})-> NodeNumberA =< NodeNumberB end, Acc),
 	nodeNext(SortedNodeBorderTuples, Iteration-1, Zero)	;
@@ -133,11 +173,7 @@ nodeListener(N,Zero, Iteration, Acc) ->
 		nodeListener(N-1,Zero, Iteration, [NodeIterResult] ++ Acc)
 	end.
 
-
-%-----------------------------------------------------------------------------------------------------------------------
 %% @doc Funkcja dzieli i przesyla kolumny na wezly. Zwraca dane o wezlach wraz z ich krawedziami
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
 -spec initializeNodesSupervisors(nodes(), columns(), integer(), integer(), integer(), {integer(),integer(),integer(),integer()}) -> {integer(), nodeTuple(), integer()}.
 initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Constants) ->
 	NodesCount = length(Nodes),
@@ -150,29 +186,18 @@ initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Co
 	    _ -> NodeColumns = lists:sublist(Columns,NodeNumber*ColumnsPerNode +1, ColumnsPerNode)
 	    end,
 		NodeProcess = spawn(Node, lifeconc, nodeSupervise, [NodeColumns, ColumnWidth, Height, length(NodeColumns),Constants, node(), NodeNumber]),
-		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth)
+		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2) )
 	    end,
     Nodes),
 	NodeTuples.
 
 
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Funkcja informuje wezly o zakonczeniu pracy.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec callFinishOnNodes([nodeTuple()]) -> ok.
-callFinishOnNodes(NodeTuples) ->
-	lists:foreach(fun({_, {_, _, NodeProcess}, _}) ->
+callFinishOnNodes(NodeTuples) -> 
+	lists:foreach(fun({_, {_, Node, NodeProcess}, _}) ->
 				NodeProcess ! {finish, self()} end, NodeTuples),
 	nodeListener(length(NodeTuples), -1,[]).
 
-
-%-----------------------------------------------------------------------------------------------------------------------
-%% @doc Funkcja skleja kolumny z wezlow w jedna tablice.
-%% @end
-%-----------------------------------------------------------------------------------------------------------------------
--spec getFinalColumns(columns()) -> integer().
-getFinalColumns(Columns)->
+	
+getFinalColumns(Columns, ColumnWidth, Height)->
 	Sorted = lists:sort(fun({_,NodeNumberA},{_,NodeNumberB})-> NodeNumberA >= NodeNumberB end, Columns),
-	Result = lists:foldl(fun({Cols, _}, Acc) ->  Cols ++ Acc end, [], Sorted),
-  Result.
+	Result = lists:foldl(fun({Columns, _}, Acc) ->  Columns ++ Acc end, [], Sorted).
