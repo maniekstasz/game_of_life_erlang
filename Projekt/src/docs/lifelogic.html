@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module lifelogic</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module lifelogic</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Modul logiczny.
+
+<p><b>Authors:</b> Szymon Konicki.</p>
+
+<h2><a name="description">Description</a></h2>Modul logiczny. Zajmuje sie dzieleniem, laczeniem boardu, obliczaniem nastepnego stanu, wyliczaniem krawedzi
+  - przetwarzaniem danych. @end
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#createConstants-2">createConstants/2</a></td><td>Metoda tworzaca dane statyczne.</td></tr>
+<tr><td valign="top"><a href="#getBorders-4">getBorders/4</a></td><td>Metoda przygotowujaca krawedzie.</td></tr>
+<tr><td valign="top"><a href="#getInnerBoard-3">getInnerBoard/3</a></td><td>Metoda zwraca tablice bez krawedzi.</td></tr>
+<tr><td valign="top"><a href="#getLeftAsRight-3">getLeftAsRight/3</a></td><td>Metoda przygotowujaca lewa krawedz sasiada.</td></tr>
+<tr><td valign="top"><a href="#getRightAsLeft-3">getRightAsLeft/3</a></td><td>Metoda przygotowujaca prawa krawedz sasiada.</td></tr>
+<tr><td valign="top"><a href="#glue-3">glue/3</a></td><td>Metoda skleja kolumny do siebie.</td></tr>
+<tr><td valign="top"><a href="#next-2">next/2</a></td><td>Metoda wykonuje iteracje planszy wg reguly Conway'a.</td></tr>
+<tr><td valign="top"><a href="#setBorders-2">setBorders/2</a></td><td>Metoda ustawia krawedzie.</td></tr>
+<tr><td valign="top"><a href="#sum-2">sum/2</a></td><td>Metoda wylicza liczbe sasiadow.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="createConstants-2">createConstants/2</a></h3>
+<div class="spec">
+<p><tt>createConstants(Width::integer(), Height::integer()) -&gt; {integer(), integer(), integer(), integer()}</tt><br></p>
+</div><p>Metoda tworzaca dane statyczne. Do poprawnego przetwarzania danych wymagane sa stale, budowane na podstawie
+       rozmiaru tablicy.</p>
+
+<h3 class="function"><a name="getBorders-4">getBorders/4</a></h3>
+<div class="spec">
+<p><tt>getBorders(Board::bitstring(), LeftConstant::integer(), RightConstant::integer(), Width::integer()) -&gt; {integer(), bitstring(), integer()}</tt><br></p>
+</div><p>Metoda przygotowujaca krawedzie. Zwraca obie krawedzie w formacie {lewa jako prawa, board, prawa jako lewa}.
+       Co ważne fukcja zwraca Integery nie bitstringi.</p>
+
+<h3 class="function"><a name="getInnerBoard-3">getInnerBoard/3</a></h3>
+<div class="spec">
+<p><tt>getInnerBoard(BoardAsInteger::bitstring(), BigWidth::integer(), BigHeight::integer()) -&gt; bitstring()</tt><br></p>
+</div><p>Metoda zwraca tablice bez krawedzi.</p>
+
+<h3 class="function"><a name="getLeftAsRight-3">getLeftAsRight/3</a></h3>
+<div class="spec">
+<p><tt>getLeftAsRight(Board::integer(), LeftConstant::integer(), Width::integer()) -&gt; integer()</tt><br></p>
+</div><p>Metoda przygotowujaca lewa krawedz sasiada. Pobiera lewa krawedz boarda i zwraca ja jako prawa.</p>
+
+<h3 class="function"><a name="getRightAsLeft-3">getRightAsLeft/3</a></h3>
+<div class="spec">
+<p><tt>getRightAsLeft(Board::integer(), RightConstant::integer(), Width::integer()) -&gt; integer()</tt><br></p>
+</div><p>Metoda przygotowujaca prawa krawedz sasiada. Pobiera prawa krawedz boarda i zwraca ja jako lewa.</p>
+
+<h3 class="function"><a name="glue-3">glue/3</a></h3>
+<div class="spec">
+<p><tt>glue(Boards::bitstring(), Width::integer(), Height::integer()) -&gt; bitstring()</tt><br></p>
+</div><p>Metoda skleja kolumny do siebie.</p>
+
+<h3 class="function"><a name="next-2">next/2</a></h3>
+<div class="spec">
+<p><tt>next(Board::bitstring(), BigWidth::integer()) -&gt; bitstring()</tt><br></p>
+</div><p>Metoda wykonuje iteracje planszy wg reguly Conway'a. Board musi byc podany jako bitstring Zwraca nastepny stan
+       tablicy</p>
+
+<h3 class="function"><a name="setBorders-2">setBorders/2</a></h3>
+<div class="spec">
+<p><tt>setBorders(InnerConstant::integer(), X2::{integer(), bitstring(), integer()}) -&gt; bitstring()</tt><br></p>
+</div><p>Metoda ustawia krawedzie. LeftBorder to krawedz ktora mamy przypisac po lewej stronie wiec bedzie to
+       RightAsLeft, RightBorder analogicznie.</p>
+
+<h3 class="function"><a name="sum-2">sum/2</a></h3>
+<div class="spec">
+<p><tt>sum(Tail::any(), Sums::any()) -&gt; any()</tt><br></p>
+</div><p>Metoda wylicza liczbe sasiadow.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Jan 27 2014, 01:09:52.</i></p>
+</body>
+</html>

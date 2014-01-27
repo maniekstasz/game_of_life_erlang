@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module lifeconc</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module lifeconc</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Modul odpowiedzialny za rozproszenie obliczen.
+
+<p><b>Authors:</b> Szymon Konicki.</p>
+
+<h2><a name="description">Description</a></h2>Modul odpowiedzialny za rozproszenie obliczen. Zarzadza procesami rozproszonymi po wszystkich dostepnych
+       wezlach, zajmuje sie transferem danych i inicjalizowaniem.
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-column">column()</a></h3>
+<p><tt>column() = integer()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columns">columns()</a></h3>
+<p><tt>columns() = [<a href="#type-column">column()</a>]</tt></p>
+
+
+<h3 class="typedecl"><a name="type-nodeTuple">nodeTuple()</a></h3>
+<p><tt>nodeTuple() = {integer(), node(), pid()}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-nodes">nodes()</a></h3>
+<p><tt>nodes() = [node()]</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#callFinishOnNodes-1">callFinishOnNodes/1</a></td><td>Funkcja informuje wezly o zakonczeniu pracy.</td></tr>
+<tr><td valign="top"><a href="#getBestConfiguration-1">getBestConfiguration/1</a></td><td>Funkcja zwraca najbardziej korzystna konfiguracje do wykonania zadania.</td></tr>
+<tr><td valign="top"><a href="#getFinalColumns-1">getFinalColumns/1</a></td><td>Funkcja skleja kolumny z wezlow w jedna tablice.</td></tr>
+<tr><td valign="top"><a href="#getNodeBorders-5">getNodeBorders/5</a></td><td>Funkcja zwraca krotke {lewa krawedx wezla, dane wezla, prawa krawedz wezla}.</td></tr>
+<tr><td valign="top"><a href="#initializeNodesSupervisors-6">initializeNodesSupervisors/6</a></td><td>Funkcja dzieli i przesyla kolumny na wezly.</td></tr>
+<tr><td valign="top"><a href="#mainController-7">mainController/7</a></td><td>Kontroler wezlow.</td></tr>
+<tr><td valign="top"><a href="#nodeListener-3">nodeListener/3</a></td><td>Funkcja czeka na odpowiedz wezlow o zakonczeniu wszystkich iteracji.</td></tr>
+<tr><td valign="top"><a href="#nodeListener-4">nodeListener/4</a></td><td>Funkcja czeka na odpowiedz wezlow o zakonczeniu danej iteracji.</td></tr>
+<tr><td valign="top"><a href="#nodeNext-3">nodeNext/3</a></td><td>Funkcja wymienia krawedzie pomiedzy wezlami i wywoluje nastepna iteracje.</td></tr>
+<tr><td valign="top"><a href="#nodeSupervise-7">nodeSupervise/7</a></td><td>Funkcja kontroluje procesy na danym wezle.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="callFinishOnNodes-1">callFinishOnNodes/1</a></h3>
+<div class="spec">
+<p><tt>callFinishOnNodes(NodeTuples::[<a href="#type-nodeTuple">nodeTuple()</a>]) -&gt; ok</tt><br></p>
+</div><p>Funkcja informuje wezly o zakonczeniu pracy.</p>
+
+<h3 class="function"><a name="getBestConfiguration-1">getBestConfiguration/1</a></h3>
+<div class="spec">
+<p><tt>getBestConfiguration(Size::integer()) -&gt; {integer(), integer(), <a href="#type-nodes">nodes()</a>}</tt><br></p>
+</div><p>Funkcja zwraca najbardziej korzystna konfiguracje do wykonania zadania. Forma zwrotki {liczbe wezlow (0 gdy ma
+       sie wykonać lokalnie), liczbe wszystkich kolumn, wezly} dla danego rozmiaru planszy</p>
+
+<h3 class="function"><a name="getFinalColumns-1">getFinalColumns/1</a></h3>
+<div class="spec">
+<p><tt>getFinalColumns(Columns::<a href="#type-columns">columns()</a>) -&gt; integer()</tt><br></p>
+</div><p>Funkcja skleja kolumny z wezlow w jedna tablice.</p>
+
+<h3 class="function"><a name="getNodeBorders-5">getNodeBorders/5</a></h3>
+<div class="spec">
+<p><tt>getNodeBorders(Columns::<a href="#type-columns">columns()</a>, NodeTuple::<a href="#type-nodeTuple">nodeTuple()</a>, LeftConstant::integer(), RightConstant::integer(), ColumnWidth::integer()) -&gt; {integer(), <a href="#type-nodeTuple">nodeTuple()</a>, integer()}</tt><br></p>
+</div><p>Funkcja zwraca krotke {lewa krawedx wezla, dane wezla, prawa krawedz wezla}.</p>
+
+<h3 class="function"><a name="initializeNodesSupervisors-6">initializeNodesSupervisors/6</a></h3>
+<div class="spec">
+<p><tt>initializeNodesSupervisors(Nodes::<a href="#type-nodes">nodes()</a>, Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer(), ColumnsCount::integer(), Constants::{integer(), integer(), integer(), integer()}) -&gt; {integer(), <a href="#type-nodeTuple">nodeTuple()</a>, integer()}</tt><br></p>
+</div><p>Funkcja dzieli i przesyla kolumny na wezly. Zwraca dane o wezlach wraz z ich krawedziami</p>
+
+<h3 class="function"><a name="mainController-7">mainController/7</a></h3>
+<div class="spec">
+<p><tt>mainController(Nodes::<a href="#type-nodes">nodes()</a>, Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer(), ColumnsCount::integer(), Constants::integer(), Iteration::integer()) -&gt; {integer(), <a href="#type-columns">columns()</a>}</tt><br></p>
+</div><p>Kontroler wezlow. Uruchamia, synchronizuje i konczy procesy na wezlach.</p>
+
+<h3 class="function"><a name="nodeListener-3">nodeListener/3</a></h3>
+<div class="spec">
+<p><tt>nodeListener(N::integer(), Iteration::integer(), Acc::any()) -&gt; ok</tt><br></p>
+</div><p>Funkcja czeka na odpowiedz wezlow o zakonczeniu wszystkich iteracji. Laczy ze soba zwracane przez wezly kolumny.</p>
+
+<h3 class="function"><a name="nodeListener-4">nodeListener/4</a></h3>
+<div class="spec">
+<p><tt>nodeListener(N::integer(), Zero::integer(), Iteration::integer(), Acc::any()) -&gt; ok</tt><br></p>
+</div><p>Funkcja czeka na odpowiedz wezlow o zakonczeniu danej iteracji. Kiedy odbierze wszystkie sortuje odpowiedzi
+       wzgledem numerow wezlow, aby mozliwa byla wymiana krawedzi.</p>
+
+<h3 class="function"><a name="nodeNext-3">nodeNext/3</a></h3>
+<div class="spec">
+<p><tt>nodeNext(NodeBorderTuples::[<a href="#type-nodeTuple">nodeTuple()</a>], Iteration::integer(), Zero::integer()) -&gt; [<a href="#type-nodeTuple">nodeTuple()</a>]</tt><br></p>
+</div><p>Funkcja wymienia krawedzie pomiedzy wezlami i wywoluje nastepna iteracje.</p>
+
+<h3 class="function"><a name="nodeSupervise-7">nodeSupervise/7</a></h3>
+<div class="spec">
+<p><tt>nodeSupervise(Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer(), ColumnsCount::integer(), X5::{integer(), integer(), integer(), integer()}, ParentNode::node(), NodeNumber::pid()) -&gt; ok</tt><br></p>
+</div><p>Funkcja kontroluje procesy na danym wezle. Komunikuje sie z mainController.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Jan 27 2014, 01:09:52.</i></p>
+</body>
+</html>

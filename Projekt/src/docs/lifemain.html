@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Module lifemain</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module lifemain</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>Glowny modul aplikacji.
+
+<p><b>Authors:</b> Szymon Konicki.</p>
+
+<h2><a name="description">Description</a></h2>Glowny modul aplikacji.
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-border">border()</a></h3>
+<p><tt>border() = integer()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-column">column()</a></h3>
+<p><tt>column() = integer()</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columnTriple">columnTriple()</a></h3>
+<p><tt>columnTriple() = {<a href="#type-columnTuple">columnTuple()</a>, <a href="#type-columnTuple">columnTuple()</a>, <a href="#type-columnTuple">columnTuple()</a>}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columnTriples">columnTriples()</a></h3>
+<p><tt>columnTriples() = [<a href="#type-columnTriple">columnTriple()</a>]</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columnTuple">columnTuple()</a></h3>
+<p><tt>columnTuple() = {<a href="#type-border">border()</a>, <a href="#type-column">column()</a>, <a href="#type-border">border()</a>}</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columnTuples">columnTuples()</a></h3>
+<p><tt>columnTuples() = [<a href="#type-columnTuple">columnTuple()</a>]</tt></p>
+
+
+<h3 class="typedecl"><a name="type-columns">columns()</a></h3>
+<p><tt>columns() = [<a href="#type-column">column()</a>]</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#borderTuplesToColumnTriples-1">borderTuplesToColumnTriples/1</a></td><td>Metoda tworzaca trojke kolumn.</td></tr>
+<tr><td valign="top"><a href="#calculateSingleColumn-3">calculateSingleColumn/3</a></td><td>Metoda przeliczajaca pojedyncza kolumne.</td></tr>
+<tr><td valign="top"><a href="#columnTripleToTuple-3">columnTripleToTuple/3</a></td><td>Metoda tworzaca krotke kolumny.</td></tr>
+<tr><td valign="top"><a href="#genDoc-0">genDoc/0</a></td><td>Metoda pomocnicza, generuje dokumentacje dla wszystkich modulow.</td></tr>
+<tr><td valign="top"><a href="#indexOf-2">indexOf/2</a></td><td>Metoda pomocnicza, zwraca indeks obiektu na liscie.</td></tr>
+<tr><td valign="top"><a href="#iterateLocal-8">iterateLocal/8</a></td><td>Metoda iterujaca na lokalnej maszynie.</td></tr>
+<tr><td valign="top"><a href="#iterateSingleMachine-9">iterateSingleMachine/9</a></td><td>Metoda wywolujaca metode iterate zadana ilosc razy na biezacej maszynie.</td></tr>
+<tr><td valign="top"><a href="#nodeBenchmark-1">nodeBenchmark/1</a></td><td>Metoda benchmarkujaca wezly.</td></tr>
+<tr><td valign="top"><a href="#prepareColumnTuples-6">prepareColumnTuples/6</a></td><td>Metoda przygotowuje kolumny do przetwarzania.</td></tr>
+<tr><td valign="top"><a href="#test_time-2">test_time/2</a></td><td>Metoda wykonujaca zadana ilosc iteracji korzystajac z najepszej konfiguracji.</td></tr>
+<tr><td valign="top"><a href="#writeFinalColumns-3">writeFinalColumns/3</a></td><td>Metoda zapisuje do pliku podane kolumny jako jedna tablice.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="borderTuplesToColumnTriples-1">borderTuplesToColumnTriples/1</a></h3>
+<div class="spec">
+<p><tt>borderTuplesToColumnTriples(BorderTuples::<a href="#type-columnTuples">columnTuples()</a>) -&gt; <a href="#type-columnTriples">columnTriples()</a></tt><br></p>
+</div><p>Metoda tworzaca trojke kolumn. Trojka kolumn to krotka zawierajaca 3 krotki kolumn - poprzedniej, biezacej oraz
+       nastepnej kolumny. Metoda jest jednym z etapow tworzenia krotek kolumn - wygodnych do przetwarzania struktur.</p>
+
+<h3 class="function"><a name="calculateSingleColumn-3">calculateSingleColumn/3</a></h3>
+<div class="spec">
+<p><tt>calculateSingleColumn(ColumnTuple::<a href="#type-columnTuple">columnTuple()</a>, ColumnWidth::integer(), InnerBoardConst::integer()) -&gt; <a href="#type-column">column()</a></tt><br></p>
+</div><p>Metoda przeliczajaca pojedyncza kolumne. Na podstawie krotki kolumny tworzona jest kolumna rozszerzona
+       o krawedzie poprzedniej i nastepnej kolumny, przeliczane sa stany wszystkich komorek kolumny, a nastepnie
+       kolumna jest obcinana ze zbednych elementow i zwracana.
+  ---------------------------------------------------------------------------------------------------------------------</p>
+
+<h3 class="function"><a name="columnTripleToTuple-3">columnTripleToTuple/3</a></h3>
+<div class="spec">
+<p><tt>columnTripleToTuple(ColumnTriple::<a href="#type-columnTriple">columnTriple()</a>, LeftAsRightV::bitstring(), RightAsRightV::bitstring()) -&gt; <a href="#type-columnTuple">columnTuple()</a></tt><br></p>
+</div><p>Metoda tworzaca krotke kolumny. Krotka kolumny to krotka zawieracaca kolejno: prawa krawedz poprzedniej kolumny
+       (lub zera, jesli pierwsza kolumna), dana kolumne, lewa krawedz nastepnej kolumny (lub zera, jesli ostatnia
+       kolumna). Metoda jest jednym z etapow tworzenia krotek kolumn - wygodnych do przetwarzania struktur.</p>
+
+<h3 class="function"><a name="genDoc-0">genDoc/0</a></h3>
+<div class="spec">
+<p><tt>genDoc() -&gt; any()</tt></p>
+</div><p>Metoda pomocnicza, generuje dokumentacje dla wszystkich modulow.</p>
+
+<h3 class="function"><a name="indexOf-2">indexOf/2</a></h3>
+<div class="spec">
+<p><tt>indexOf(Elem::any(), List::list()) -&gt; integer()</tt><br></p>
+</div><p>Metoda pomocnicza, zwraca indeks obiektu na liscie.</p>
+
+<h3 class="function"><a name="iterateLocal-8">iterateLocal/8</a></h3>
+<div class="spec">
+<p><tt>iterateLocal(Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer(), LeftAsRight::integer(), RightAsRight::integer(), LeftConstant::integer(), RightConstant::integer(), InnerBoardConst::integer()) -&gt; <a href="#type-columns">columns()</a></tt><br></p>
+</div><p>Metoda iterujaca na lokalnej maszynie. Z podanych kolumn tworzy krotki kolumn, ktore nastepnie rozsyla do
+       Dostaje liste krotek kolumn do przetworzenia na maszynie, uzywajac metody rpc:pmap, przelicza dla kazdej kolumny
+       nastepny stan i zwraca liste przeliczonych kolumn w tej samej kolejnosci.</p>
+
+<h3 class="function"><a name="iterateSingleMachine-9">iterateSingleMachine/9</a></h3>
+<div class="spec">
+<p><tt>iterateSingleMachine(Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer(), LeftAsRight::integer(), RightAsRight::integer(), LeftConstant::integer(), RightConstant::integer(), InnerBoardConst::integer(), IterationCounter::integer()) -&gt; {integer(), <a href="#type-columns">columns()</a>}</tt><br></p>
+</div><p>Metoda wywolujaca metode iterate zadana ilosc razy na biezacej maszynie. Zwraca kolumny po iteracji oraz czas
+       iteracji.
+  ---------------------------------------------------------------------------------------------------------------------</p>
+
+<h3 class="function"><a name="nodeBenchmark-1">nodeBenchmark/1</a></h3>
+<div class="spec">
+<p><tt>nodeBenchmark(Nodes::[node()]) -&gt; ok</tt><br></p>
+</div><p>Metoda benchmarkujaca wezly.</p>
+
+<h3 class="function"><a name="prepareColumnTuples-6">prepareColumnTuples/6</a></h3>
+<div class="spec">
+<p><tt>prepareColumnTuples(Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), LeftAsRight::bitstring(), RightAsRight::bitstring(), LeftConstant::integer(), RightConstant::integer()) -&gt; <a href="#type-columnTuples">columnTuples()</a></tt><br></p>
+</div><p>Metoda przygotowuje kolumny do przetwarzania. W jej wyniku powstaje lista krotek o postaci: {prawa krawedz
+       poprzedniej kolumny (lub zero, jesli pierwsza kolumna), dana kolumna, lewa krawedz nastepnej kolumny (lub zero,
+       jesli ostatnia kolumna)}. Takie struktury danych umozliwiaja niezalezne przeliczanie poszczegolnych kolumn
+       w rozproszeniu.</p>
+
+<h3 class="function"><a name="test_time-2">test_time/2</a></h3>
+<div class="spec">
+<p><tt>test_time(IterationCount::integer(), WriteFinalBoard::atom()) -&gt; ok</tt><br></p>
+</div><p>Metoda wykonujaca zadana ilosc iteracji korzystajac z najepszej konfiguracji.</p>
+
+<h3 class="function"><a name="writeFinalColumns-3">writeFinalColumns/3</a></h3>
+<div class="spec">
+<p><tt>writeFinalColumns(Columns::<a href="#type-columns">columns()</a>, ColumnWidth::integer(), Height::integer()) -&gt; ok</tt><br></p>
+</div><p>Metoda zapisuje do pliku podane kolumny jako jedna tablice.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Jan 27 2014, 01:09:52.</i></p>
+</body>
+</html>
