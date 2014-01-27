@@ -1,34 +1,21 @@
 %% @author Szymon Konicki
-%% @doc Modul logiczny.
-%%      Zajmuje sie dzieleniem, laczeniem boardu,
-%%      obliczaniem nastepnego stanu, wyliczaniem
-%%      krawedzi - przetwarzaniem danych.
-
-
+%% @doc Modul logiczny. Zajmuje sie dzieleniem, laczeniem boardu, obliczaniem nastepnego stanu, wyliczaniem krawedzi
+%% - przetwarzaniem danych. @end
 -module(lifelogic).
--export([
-  createConstants/2,
-  getLeftAsRight/3,
-  getRightAsLeft/3,
-  getBorders/4,
-  setBorders/2,
-  next/2,
-  getInnerBoard/3,
-  glue/3,
-  getBoardExtraTopAndBottom/2]).
+-export([createConstants/2, getLeftAsRight/3, getRightAsLeft/3, getBorders/4, setBorders/2, glue/3, getInnerBoard/3, next/2, sum/2]).
 
 
-% === WAŻNE ===
-% Width, Height - rozmiary tablicy niepowiekszonej
-% BigWidth, BigHeight - rozmiary tablicy powiekszonej
-% BigSize - analogicznie
+%=== WAŻNE ===
+%Width, Height - rozmiary tablicy niepowiekszonej
+%BigWidth, BigHeight - rozmiary tablicy powiekszonej
+%BigSize - analogicznie
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda tworzaca dane statyczne.
-%%      Do poprawnego przetwarzania danych wymagane
-%%      sa stale, budowane na podstawie rozmiaru tablicy
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda tworzaca dane statyczne. Do poprawnego przetwarzania danych wymagane sa stale, budowane na podstawie
+%%      rozmiaru tablicy.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec createConstants(integer(), integer()) -> {integer(),integer(),integer(),integer()}.
 createConstants(Width, Height) ->
 	BigSize = (Width+2)*(Height+2),
@@ -45,50 +32,48 @@ createConstants(Width, Height) ->
 	{InnerBoard, Left, Right, Zero}.
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda przygotowujaca lewa krawedz sasiada.
-%%      Pobiera lewa krawedz boarda i zwraca ja
-%%      jako prawa
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda przygotowujaca lewa krawedz sasiada. Pobiera lewa krawedz boarda i zwraca ja jako prawa.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec getLeftAsRight(integer(), integer(), integer()) -> integer().
 getLeftAsRight(Board, LeftConstant, Width) ->
 	Board band LeftConstant bsr Width.
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda przygotowujaca prawa krawedz sasiada.
-%%      Pobiera prawa krawedz boarda i zwraca ja
-%%      jako lewa
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda przygotowujaca prawa krawedz sasiada. Pobiera prawa krawedz boarda i zwraca ja jako lewa.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec getRightAsLeft(integer(), integer(), integer()) -> integer().
 getRightAsLeft(Board, RightConstant, Width) ->
 	Board band RightConstant bsl Width.
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda przygotowujaca krawedzie.
-%%      Zwraca obie krawedzie w formacie
-%%      {lewa jako prawa, board, prawa jako lewa}.
-%%      Co ważne fukcja zwraca Integery nie bitstringi
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda przygotowujaca krawedzie. Zwraca obie krawedzie w formacie {lewa jako prawa, board, prawa jako lewa}.
+%%      Co ważne fukcja zwraca Integery nie bitstringi.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec getBorders(bitstring(), integer(), integer(), integer()) -> {integer(), bitstring(), integer()}.
 getBorders(Board, LeftConstant, RightConstant, Width) ->
 	{getLeftAsRight(Board, LeftConstant, Width), Board, getRightAsLeft(Board, RightConstant, Width)}.
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda ustawia krawedzie.
-%%      LeftBorder to krawedz ktora mamy przypisac
-%%      po lewej stronie wiec bedzie to RightAsLeft,
-%%      RightBorder analogicznie
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda ustawia krawedzie. LeftBorder to krawedz ktora mamy przypisac po lewej stronie wiec bedzie to
+%%      RightAsLeft, RightBorder analogicznie.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec setBorders(integer(), {integer(), bitstring(), integer()}) -> bitstring().
 setBorders(InnerConstant, {LeftBorder, Board, RightBorder}) ->
 	Board band InnerConstant bor LeftBorder bor RightBorder.
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda skleja kolumny do siebie
-%% ---------------------------------------------------------------------------------------------------------------------
+
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda skleja kolumny do siebie.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec glue(bitstring(), integer(), integer()) -> bitstring().
 glue(Boards, Width, Height) -> glue(Boards,Width, Height,0, <<0:0>>).
 glue(Boards, Width,Height,Offset, Acc) ->
@@ -102,9 +87,10 @@ glue(Boards, Width,Height,Offset, Acc) ->
 	end.
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda zwraca tablice bez krawedzi
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda zwraca tablice bez krawedzi.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec getInnerBoard(bitstring(),integer(),integer()) -> bitstring().
 getInnerBoard(BoardAsInteger,BigWidth, BigHeight) ->
 	BigSize = BigWidth * BigHeight,
@@ -114,17 +100,12 @@ getInnerBoard(BoardAsInteger,BigWidth, BigHeight) ->
 	BoardSize2 = BigWidth - 2,
 	<< <<Line:BoardSize2>> || <<_:1, Line:BoardSize2, _:1>> <= SmallerBoard >>.
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%Dostaje zwykla tablice i dorzuca do niej zera na gorze i na dole
-%% ---------------------------------------------------------------------------------------------------------------------
-getBoardExtraTopAndBottom(Board, Width) ->
-	<<0:Width, Board/bits, 0:Width>>.
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda wykonuje iteracje planszy wg reguly Conway'a.
-%%      Board musi byc podany jako bitstring
-%%      Zwraca nastepny stan tablicy
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda wykonuje iteracje planszy wg reguly Conway'a. Board musi byc podany jako bitstring Zwraca nastepny stan
+%%      tablicy
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec next(bitstring(),integer()) -> bitstring().
 next(Board, BigWidth) ->
 	Neigh = [Board bsl 1,
@@ -143,13 +124,13 @@ next(Board, BigWidth) ->
 	(bnot Board band FS3) bor (Board band FS3) bor (Board band FS2).
 
 
-%% ---------------------------------------------------------------------------------------------------------------------
-%% @doc Metoda wylicza liczbe sasiadow
-%% ---------------------------------------------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda wylicza liczbe sasiadow.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
 -spec sum(any(),any()) -> any().
 sum([], Sums) -> Sums;
 sum([L|Tail], [S3, S2, S1, S0]) ->
 	NL = bnot L,
 	Sums = [((S3 band NL) bor (S2 band L)) , ((S2 band NL) bor (S1 band L)) , ((S1 band NL) bor (S0 band L)), (S0 band NL)],
 	sum(Tail,Sums).
-
