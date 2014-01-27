@@ -40,7 +40,7 @@ getBestConfiguration(Size) ->
 
 
 %-----------------------------------------------------------------------------------------------------------------------
-%% @doc Kontroler wezlow. Uruchamia, synchronizuje i konczy procesy na wezlach.
+%% @doc K ontroler wezlow. Uruchamia, synchronizuje i konczy procesy na wezlach.
 %% @end
 %-----------------------------------------------------------------------------------------------------------------------
 -spec mainController(nodes(), columns(), integer(), integer(), integer(), integer(), integer()) ->
