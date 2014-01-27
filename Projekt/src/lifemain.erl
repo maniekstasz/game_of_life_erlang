@@ -1,13 +1,9 @@
 -module(lifemain).
 
--export([testTimeLocal/0,testTimeLocal/2]).
-
+-export([testTimeLocal/0,testTimeLocal/2,nodeBench/1]).
 -export([calculateSingleColumn/4]).
 -export([prepareColumnTuples/7,borderTuplesToColumnTriples/1,columnTripleToTuple/3, indexOf/2, test_time/2, iterateLocal/10, iterate/9]).
 
--export([iterate/9]).
-
--type board() :: integer().
 -type column() :: integer().
 -type columns() :: [column()].
 -type border() :: integer().
@@ -15,16 +11,46 @@
 -type columnTuples() :: [columnTuple()].
 -type columnTriple() :: {columnTuple(),columnTuple(),columnTuple()}.
 -type columnTriples() :: [columnTriple()].
--type nodes() :: [node()].
 -type key() :: pid().
 -type nodeKey() :: {node(), key()}.
--type nodeKeys() :: [nodeKey()].
+
+
+
+nodeBench(Nodes) ->
+  Size = lifeio:getSize('/fff.gz'),
+  CNodes = case length(Nodes) of 0->0; 1->1; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; 8->8; 9->8; 10->8 end,
+  ProcList = lists:sublist([1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384], Size-5, 6),
+  iterateForProcesses(CNodes, ProcList, lists:sublist(Nodes, CNodes)).
+
+iterateForProcesses(_, [], _) -> ok;
+iterateForProcesses(CNodes, [CProc|Rest], Nodes) ->
+  iterateForNodes(CNodes, CProc, Nodes),
+  iterateForProcesses(CNodes, Rest, Nodes).
+
+iterateForNodes(1, CColumns, _) ->   %%nie ma sensu wysylac danych na jeden osobny
+  iterateForNodes(0, CColumns, []);
+iterateForNodes(0, CColumns, _) ->
+  Configuration = {0, CColumns, []},
+  test_time(2,false,Configuration),
+  ok;
+iterateForNodes(CNodes,CColumns, Nodes) ->
+  SubNodes = lists:sublist(Nodes, CNodes),
+  Configuration = {CNodes, CColumns, SubNodes},
+  test_time(2,false,Configuration),
+  iterateForNodes(CNodes div 2, CColumns, Nodes).
+
+
 
 %% @doc Jest to glowna metoda sterujaca calym programem. 
 -spec test_time(integer(), atom()) -> ok.
 test_time(IterationCount, WriteFinalBoard)->
-	Size = lifeio:getSize('/fff.gz'),
-	{NodesCount, ColumnsCount, Nodes} = lifeconc:getBestConfiguration(Size),
+  Size = lifeio:getSize('/fff.gz'),
+  Conf = lifeconc:getBestConfiguration(Size),
+  test_time(IterationCount, WriteFinalBoard, Conf).
+
+
+test_time(IterationCount, WriteFinalBoard, Conf)->
+	{NodesCount, ColumnsCount, Nodes} = Conf,
 	{BoardSize, Columns} = lifeio:readDataToColumns('/fff.gz', ColumnsCount),
 	ColumnWidth = BoardSize div ColumnsCount,
 	{InnerConstant, LeftConstant, RightConstant, Zero} = lifelogic:createConstants(ColumnWidth, BoardSize),
@@ -32,15 +58,14 @@ test_time(IterationCount, WriteFinalBoard)->
 		0 -> lifemain:iterateLocal(Columns, ColumnWidth, BoardSize, ColumnsCount, Zero, Zero, LeftConstant, RightConstant, InnerConstant, IterationCount);
 		_ -> lifeconc:mainController(Nodes, Columns, ColumnWidth, BoardSize, ColumnsCount, {InnerConstant, LeftConstant, RightConstant, Zero}, IterationCount)
 	end,
-	io:format("Czas iteracji ~p~n", [IterationTime]),
+	io:format("Time ~p~n", [IterationTime]),
 	case WriteFinalBoard of 
 		true ->
-			io:format("Zapisuje tablice do pliku~n",[]),
+			io:format("Saving to file~n"),
 			writeFinalColumns(Result, ColumnWidth, BoardSize),
-			io:format("Tablica zapisana~n",[]);
+			io:format("File saved~n");
 		false -> ok
-	end,
-	io:format("Koniec~n",[]).
+	end.
 	
 %% @doc Metoda zapisuje do pliku podane kolumny jako jedną tablice
 -spec writeFinalColumns(columns(), integer(), integer()) -> ok.
@@ -48,28 +73,6 @@ writeFinalColumns(Columns, ColumnWidth, Height)->
 	Inners = lists:map(fun(Elem) -> lifelogic:getInnerBoard(Elem, ColumnWidth+2, Height+2) end, Columns),
 	Glued = lifelogic:glue(Inners, ColumnWidth, Height),
 	lifeio:writeBoardToFile(Glued, Height).
-
-
-gatherResult(NodeKeyList, Count) -> gatherResult(NodeKeyList, Count, 0).
-gatherResult(_, 0, Data) -> Data;
-gatherResult(NodeKeyList, NodesLeft, Data) ->
-  receive
-    {ok, Node} ->
-      {_, Key} = lists:keyfind(Node, 1, NodeKeyList),
-      RemoteResult = rpc:yield(Key),
-      io:format("- Dostalem od ~s klucz ~p; wartosc: ", [Node, Key]),
-      io:write(RemoteResult),
-      io:format("~n"),
-      gatherResult(NodeKeyList, NodesLeft-1, Data);
-    _Other ->
-      io:format("Dostalem cos dziwnego:~n"),
-      io:write(_Other),
-      io:format("~n~n")
-  after 15000 ->
-    io:format("Timeout 15 sekund~n"),
-    timeout
-  end,
-  Data.
 
 
 %% ---------------------------------------------------------------------------------------------------------------------
@@ -109,14 +112,13 @@ testTimeLocal(Count, IterationsNumber) ->
 %% @doc Metoda wywolujaca metode iterate zadana ilosc razy. Zwraca kolumny po iteracji oraz czas iteracji.
 -spec iterateLocal(columns(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer(), integer()) -> {integer(), columns()}.
 iterateLocal(Columns,ColumnWidth,Height, ColumnsCount, LeftAsRight, RightAsRight, LeftConstant, RightConstant, InnerBoardConst, IterationCounter) ->
-	io:format("Iteracje zostana wykonane tylko lokalnie~n",[]),
-	io:format("Rozpoczynam mierzenie czasu~n",[]),
+
+	io:format("Local  (0 nodes); Processes: ~b, Iterations: ~b -> ",[ColumnsCount, IterationCounter]),
 	Begin = now(),
  	Result = lists:foldl(fun(_, Acc) -> 
 		lifemain:iterate(Acc, ColumnWidth,Height, ColumnsCount,LeftAsRight, RightAsRight, LeftConstant, RightConstant,InnerBoardConst) end, Columns,
 							  lists:seq(1, IterationCounter)),
 	End = now(),
-	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	{timer:now_diff(End, Begin),Result}.
 
 %% ---------------------------------------------------------------------------------------------------------------------

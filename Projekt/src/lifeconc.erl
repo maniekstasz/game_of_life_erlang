@@ -35,11 +35,10 @@ getBestConfiguration(Size) ->
 mainController(Nodes, Columns, ColumnWidth, Height, ColumnsCount,Constants, Iteration) ->
 	{_,_,_,Zero} = Constants,
 	NodeBorderTuples = initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Constants),
-	io:format("Przystepujemy do iteracji. Od tej pory liczymy czas~n",[]),
+	io:format("Remote (~b nodes); Processes: ~b, Iterations: ~b -> ",[length(Nodes),ColumnsCount,Iteration]),
 	Begin = now(),
 	NodeTuples = nodeNext(NodeBorderTuples, Iteration, Zero),
 	End = now(),
-	io:format("Iteracja zakonczona koniec pomiaru czasu ~n",[]),
 	ResultedColumns = callFinishOnNodes(NodeTuples),
 	Result = getFinalColumns(ResultedColumns, ColumnWidth, Height),
 	{timer:now_diff(End, Begin), Result}.		
@@ -110,19 +109,16 @@ initializeNodesSupervisors(Nodes, Columns, ColumnWidth, Height, ColumnsCount, Co
 	NodesCount = length(Nodes),
 	ColumnsPerNode = ColumnsCount div NodesCount,
 	{_,LeftConstant, RightConstant,_} = Constants,
-	io:format("Rozpoczynam przesylanie danych do ~p wezlow ~n", [NodesCount]),
 	NodeTuples = lists:map(fun(Node) ->
 		NodeNumber = lifemain:indexOf(Node,Nodes)-1,
 		case NodeNumber of
 	    0 -> NodeColumns = lists:sublist(Columns,1 , ColumnsPerNode);
 	    _ -> NodeColumns = lists:sublist(Columns,NodeNumber*ColumnsPerNode +1, ColumnsPerNode)
 	    end,
-		io:format("~p", [Node]),
 		NodeProcess = spawn(Node, lifeconc, nodeSupervise, [NodeColumns, ColumnWidth, Height, length(NodeColumns),Constants, node(), NodeNumber]),
 		getNodeBorders(NodeColumns, {NodeNumber, Node, NodeProcess}, LeftConstant, RightConstant, ColumnWidth, (ColumnWidth+2)*(Height+2) )
 	    end,
     Nodes),
-	io:format("Dane przeslane ~n", []),
 	NodeTuples.
 
 
