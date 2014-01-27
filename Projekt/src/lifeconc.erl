@@ -24,11 +24,31 @@
 %%      dla danego rozmiaru planszy
 -spec getBestConfiguration(integer()) -> {integer(), integer(), nodes()}.
 getBestConfiguration(Size) ->
-	net_adm:ping('l1@szymon-PC'),
-	net_adm:ping('l2@szymon-PC'),
-	net_adm:ping('l3@szymon-PC'),
-	net_adm:ping('l4@szymon-PC'),
-	{4, 16, nodes()}.
+  Nodes = net_adm:world(),
+  case Size of
+    8 -> %256
+      CNodes = 0,
+      CProc = 8;
+    9 -> %512
+      CNodes = 0,
+      CProc = 16;
+    10 -> %1024
+      CNodes = 0,
+      CProc = 32;
+    11 -> %2048
+      CNodes = 2,
+      CProc = 16;
+    12 -> %4096
+      CNodes = 0,
+      CProc = 16;
+    13 -> %8192
+      CNodes = 0,
+      CProc = 16;
+    14 -> %16384
+      CNodes = 0,
+      CProc = 16
+  end,
+	{CNodes, CProc, lists:sublist(Nodes, CNodes)}.
 	
 %% @doc Funkcja ta to kontroler wezlow: uruchamia, synchronizuje i kończy procesy na wezlach.
 -spec mainController(nodes(), columns(), integer(), integer(), integer(), integer(), integer()) -> {integer(),columns() }.
