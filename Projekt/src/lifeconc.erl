@@ -36,18 +36,67 @@ getBestConfiguration(Size) ->
     10 -> %1024
       CNodes = 0,
       CProc = 16;
+    %%
     11 -> %2048
-      CNodes = 2,
-      CProc = 16;
-    12 -> %4096
-      CNodes = 0,
-      CProc = 16;
-    13 -> %8192
-      CNodes = 0,
-      CProc = 16;
-    14 -> %16384
-      CNodes = 0,
-      CProc = 16
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 32
+      end;
+    12 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end;
+    13 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end;
+    14 -> %2048
+      case NodesCount of
+        8 ->
+          CNodes = 8,
+          CProc = 16;
+        4 ->
+          CNodes = 4,
+          CProc = 64;
+        2 ->
+          CNodes = 2,
+          CProc = 64;
+        0 ->
+          CNodes = 0,
+          CProc = 64
+      end
   end,
 	{CNodes, CProc, lists:sublist(Nodes, CNodes)}.
 	
