@@ -9,7 +9,10 @@
   prepareColumnTuples/6,
   borderTuplesToColumnTriples/1,
   columnTripleToTuple/3,
-  indexOf/2, iterateSingleMachine/9, calculateSingleColumn/3]).
+  indexOf/2,
+  iterateSingleMachine/9,
+  calculateSingleColumn/3,
+  genDoc/0]).
 
 
 -type column() :: integer().
@@ -194,3 +197,10 @@ indexOf(Elem, List, Index) ->
 		true -> Index;
 		false -> indexOf(Elem,List,Index+1)
 	end.
+
+%-----------------------------------------------------------------------------------------------------------------------
+%% @doc Metoda pomocnicza, generuje dokumentacje dla wszystkich modulow.
+%% @end
+%-----------------------------------------------------------------------------------------------------------------------
+genDoc() ->
+  edoc:files(['lifemain.erl','lifeconc.erl','lifelogic.erl'],[{dir,docs}]).

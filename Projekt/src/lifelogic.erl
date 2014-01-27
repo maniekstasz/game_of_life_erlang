@@ -2,7 +2,15 @@
 %% @doc Modul logiczny. Zajmuje sie dzieleniem, laczeniem boardu, obliczaniem nastepnego stanu, wyliczaniem krawedzi
 %% - przetwarzaniem danych. @end
 -module(lifelogic).
--export([createConstants/2, getLeftAsRight/3, getRightAsLeft/3, getBorders/4, setBorders/2, glue/3, getInnerBoard/3, next/2, sum/2]).
+-export([createConstants/2,
+  getLeftAsRight/3,
+  getRightAsLeft/3,
+  getBorders/4,
+  setBorders/2,
+  glue/3,
+  getInnerBoard/3,
+  next/2,
+  sum/2]).
 
 
 %=== WAŻNE ===
