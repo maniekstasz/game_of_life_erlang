@@ -43,7 +43,7 @@ iterateForProcesses(CNodes, [CProc|Rest], Nodes) ->
   iterateForProcesses(CNodes, Rest, Nodes).
 
 iterateForNodes(1, CColumns, _) ->   %%nie ma sensu wysylac danych na jeden osobny
-  nodeiterateForNodes(0, CColumns, _);
+  iterateForNodes(0, CColumns, []);
 iterateForNodes(0, CColumns, _) ->
   Configuration = {0, CColumns, []},
   test_time(2,false,Configuration),
