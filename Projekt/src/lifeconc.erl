@@ -1,4 +1,4 @@
-%% @author Szymon Konicki
+%% @author Mateusz Jabłoński
 %% @doc Modul odpowiedzialny za rozproszenie obliczen. Zarzadza procesami rozproszonymi po wszystkich dostepnych
 %%      wezlach, zajmuje sie transferem danych i inicjalizowaniem.
 %% @end
