@@ -25,16 +25,17 @@
 -spec getBestConfiguration(integer()) -> {integer(), integer(), nodes()}.
 getBestConfiguration(Size) ->
   Nodes = net_adm:world(),
+  NodesCount = case length(Nodes) of 0->0; 1->0; 2->2; 3->2; 4->4; 5->4; 6->4; 7->4; _->8 end,
   case Size of
     8 -> %256
       CNodes = 0,
-      CProc = 8;
-    9 -> %512
-      CNodes = 0,
-      CProc = 16;
+      CProc = 4;
+    9 -> %1024
+    CNodes = 0,
+    CProc = 8;
     10 -> %1024
       CNodes = 0,
-      CProc = 32;
+      CProc = 16;
     11 -> %2048
       CNodes = 2,
       CProc = 16;
